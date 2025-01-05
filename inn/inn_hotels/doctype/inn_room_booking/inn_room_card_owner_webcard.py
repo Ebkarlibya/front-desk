@@ -51,8 +51,16 @@ def count_sold_room(start_date=None, end_date=None):
 
     total_sold = 0
     # calculate reservation start before start_date and reservation end after start date
-    current_sold = frappe.db.get_values(doctype="Inn Room Booking", filters={"start": ["<", start_date], "end": [
-                                        ">", start_date], "room_availability": "Room Sold"}, fieldname=["start", "end"], as_dict=True)
+    current_sold = frappe.db.get_values(
+        doctype="Inn Room Booking",
+        filters={
+            "start": ["<", start_date],
+            "end": [">", start_date],
+            "room_availability": "Room Sold",
+        },
+        fieldname=["start", "end"],
+        as_dict=True,
+    )
     for ii in current_sold:
         room_end_date = ii.end
         if room_end_date > end_date:
@@ -62,8 +70,15 @@ def count_sold_room(start_date=None, end_date=None):
         total_sold += days_sold
 
     # calculate reservation start after start_date and reservations start before before_date
-    current_sold = frappe.db.get_values(doctype="Inn Room Booking", filters=[["start", "between", [start_date, end_date]], [
-                                        "room_availability", "=", "Room Sold"]], fieldname=["start", "end"], as_dict=True)
+    current_sold = frappe.db.get_values(
+        doctype="Inn Room Booking",
+        filters=[
+            ["start", "between", [start_date, end_date]],
+            ["room_availability", "=", "Room Sold"],
+        ],
+        fieldname=["start", "end"],
+        as_dict=True,
+    )
     for ii in current_sold:
         room_start_date = ii.start
         room_end_date = ii.end
@@ -73,10 +88,7 @@ def count_sold_room(start_date=None, end_date=None):
         days_sold = (room_end_date - room_start_date).days
         total_sold += days_sold
 
-    return {
-        "value": total_sold,
-        "fieldtype": "Int"
-    }
+    return {"value": total_sold, "fieldtype": "Int"}
 
 
 @frappe.whitelist()
@@ -105,8 +117,16 @@ def count_available_room(start_date=None, end_date=None):
 
     total_sold = 0
     # calculate reservation start before start_date and reservation end after start date
-    current_used = frappe.db.get_values(doctype="Inn Room Booking", filters={"start": ["<", start_date], "end": [
-                                        ">", start_date],  "status": ["!=", "Finished"]}, fieldname=["start", "end"], as_dict=True)
+    current_used = frappe.db.get_values(
+        doctype="Inn Room Booking",
+        filters={
+            "start": ["<", start_date],
+            "end": [">", start_date],
+            "status": ["!=", "Finished"],
+        },
+        fieldname=["start", "end"],
+        as_dict=True,
+    )
     for ii in current_used:
         room_end_date = ii.end
         if room_end_date > end_date:
@@ -116,8 +136,15 @@ def count_available_room(start_date=None, end_date=None):
         total_sold += days_sold
 
     # calculate reservation start after start_date and reservations start before before_date
-    current_used = frappe.db.get_values(doctype="Inn Room Booking", filters=[["start", "between", [
-                                        start_date, end_date]], ["status", "!=", "Finished"]], fieldname=["start", "end"], as_dict=True)
+    current_used = frappe.db.get_values(
+        doctype="Inn Room Booking",
+        filters=[
+            ["start", "between", [start_date, end_date]],
+            ["status", "!=", "Finished"],
+        ],
+        fieldname=["start", "end"],
+        as_dict=True,
+    )
     for ii in current_used:
         room_start_date = ii.start
         room_end_date = ii.end
@@ -127,10 +154,7 @@ def count_available_room(start_date=None, end_date=None):
         days_sold = (room_end_date - room_start_date).days
         total_sold += days_sold
 
-    return {
-        "value": all_room - total_sold,
-        "fieldtype": "Int"
-    }
+    return {"value": all_room - total_sold, "fieldtype": "Int"}
 
 
 @frappe.whitelist()
@@ -156,8 +180,17 @@ def count_ooo_room(start_date=None, end_date=None):
 
     total_sold = 0
     # calculate reservation start before start_date and reservation end after start date
-    current_ooo = frappe.db.get_values(doctype="Inn Room Booking", filters={"start": ["<", start_date], "end": [
-                                       ">", start_date], "room_availability": "Out of Order", "status": ["!=", "Finished"]}, fieldname=["start", "end"], as_dict=True)
+    current_ooo = frappe.db.get_values(
+        doctype="Inn Room Booking",
+        filters={
+            "start": ["<", start_date],
+            "end": [">", start_date],
+            "room_availability": "Out of Order",
+            "status": ["!=", "Finished"],
+        },
+        fieldname=["start", "end"],
+        as_dict=True,
+    )
     for ii in current_ooo:
         room_end_date = ii.end
         if room_end_date > end_date:
@@ -167,8 +200,16 @@ def count_ooo_room(start_date=None, end_date=None):
         total_sold += days_sold
 
     # calculate reservation start after start_date and reservations start before before_date
-    current_ooo = frappe.db.get_values(doctype="Inn Room Booking", filters=[["start", "between", [start_date, end_date]], [
-                                       "room_availability", "=", "Out of Order"], ["status", "!=", "Finished"]], fieldname=["start", "end"], as_dict=True)
+    current_ooo = frappe.db.get_values(
+        doctype="Inn Room Booking",
+        filters=[
+            ["start", "between", [start_date, end_date]],
+            ["room_availability", "=", "Out of Order"],
+            ["status", "!=", "Finished"],
+        ],
+        fieldname=["start", "end"],
+        as_dict=True,
+    )
     for ii in current_ooo:
         room_start_date = ii.start
         room_end_date = ii.end
@@ -178,14 +219,12 @@ def count_ooo_room(start_date=None, end_date=None):
         days_sold = (room_end_date - room_start_date).days
         total_sold += days_sold
 
-    return {
-        "value": total_sold,
-        "fieldtype": "Int"
-    }
+    return {"value": total_sold, "fieldtype": "Int"}
 
 
 def calculate_total_rate_and_sold(start_date, end_date):
     from frappe.utils import now_datetime
+
     try:
         start_date = parse(start_date, False).date()
     except ValueError:
@@ -208,9 +247,13 @@ def calculate_total_rate_and_sold(start_date, end_date):
     if start_date <= now_datetime().date() < end_date:
         get_today = True
 
-    transaction_type = ('Breakfast Charge Tax/Service',
-                        'Breakfast Charge', 'Room Charge', 'Room Charge Tax/Service')
-    reservation_query = f'''
+    transaction_type = (
+        "Breakfast Charge Tax/Service",
+        "Breakfast Charge",
+        "Room Charge",
+        "Room Charge Tax/Service",
+    )
+    reservation_query = f"""
         select tif.name as folio_id
         from `tabInn Reservation` as ir
         left join `tabInn Folio` as tif
@@ -218,7 +261,7 @@ def calculate_total_rate_and_sold(start_date, end_date):
         where 
         (ir.arrival <= '{start_date}' and ir.expected_departure > '{start_date}') or
         (ir.expected_arrival >= '{start_date}' and ir.expected_arrival < '{end_date}')
-    '''
+    """
 
     folio_id = frappe.db.sql(reservation_query, as_dict=1)
     folio_id = tuple([x.folio_id for x in folio_id])
@@ -226,35 +269,35 @@ def calculate_total_rate_and_sold(start_date, end_date):
         # so no need to parse further
         folio_id = tuple(["", ""])
 
-    transaction_query = f'''
+    transaction_query = f"""
         select sum(amount) as total
         from `tabInn Folio Transaction`
         where audit_date < '{end_date}' and audit_date >= '{start_date}'
         and parent in {folio_id}
         and transaction_type in {transaction_type}
-    '''
+    """
     total = frappe.db.sql(transaction_query, as_dict=1)[0]
     if total.total == None:
         total.total = 0
 
-    count_query = f'''
+    count_query = f"""
         select count(*) as count
         from `tabInn Folio Transaction`
         where audit_date < '{end_date}' and audit_date >= '{start_date}'
         and parent in {folio_id}
         and transaction_type = 'Room Charge'
-    '''
+    """
     count = frappe.db.sql(count_query, as_dict=1)[0]
 
     if get_today:
-        today_query = f'''
+        today_query = f"""
             select sum(actual_room_rate) as total, count(*) as count
             from `tabInn Reservation` ir
             where ir.status = 'In House' and ir.expected_arrival <= '{start_date}'
-        '''
+        """
         today = frappe.db.sql(today_query, as_dict=1)
         today = today[0]
-        total.total += today.total
+        total.total += today.total if today.total else 0
         count.count += today.count
 
     return total.total, count.count
@@ -305,17 +348,13 @@ def calculate_average_rate(start_date=None, end_date=None):
         start_date = date.today().isoformat()
         end_date = date.today() + timedelta(days=1)
         end_date = end_date.isoformat()
-    total_rate, total_sold = calculate_total_rate_and_sold(
-        start_date, end_date)
+    total_rate, total_sold = calculate_total_rate_and_sold(start_date, end_date)
     if total_sold == 0:
         value = 0
     else:
         value = total_rate / total_sold
 
-    return {
-        "value": value,
-        "fieldtype": "Currency"
-    }
+    return {"value": value, "fieldtype": "Currency"}
 
 
 @frappe.whitelist()
@@ -327,7 +366,4 @@ def calculate_total_rate(start_date=None, end_date=None):
     total_rate, _ = calculate_total_rate_and_sold(start_date, end_date)
     if total_rate is None:
         total_rate = 0
-    return {
-        "value": total_rate,
-        "fieldtype": "Currency"
-    }
+    return {"value": total_rate, "fieldtype": "Currency"}
