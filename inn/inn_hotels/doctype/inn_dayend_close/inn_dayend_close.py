@@ -174,6 +174,7 @@ def process_dayend_close(doc_id):
                 )
                 # Folio must not be empty, Because Journal Entry Table Account not allowed to be empty
                 if len(closed_trx_list) > 0:
+
                     doc_je = frappe.new_doc("Journal Entry")
                     doc_je.title = doc_folio.name
                     doc_je.voucher_type = "Journal Entry"
@@ -187,6 +188,8 @@ def process_dayend_close(doc_id):
                     doc_je.user_remark = closed_folio_remark
 
                     for trx in closed_trx_list:
+                        if "Tax" in trx.transaction_type:
+                            continue
                         if trx.flag == "Debit":
                             doc_jea_debit = frappe.new_doc("Journal Entry Account")
                             doc_jea_debit.account = trx.debit_account
