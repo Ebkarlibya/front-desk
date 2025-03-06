@@ -22,7 +22,7 @@ frappe.ui.form.on('Inn Shift', {
 				callback: (r) => {
 					if (r.message === 1) {
 						frappe.set_route('List', 'Inn Shift');
-						frappe.msgprint('A Shift already Opened. Please close it first before creating new one.');
+						frappe.msgprint(__('A Shift already Opened. Please close it first before creating new one.'));
 					}
 					else{
 						let cash_count = [100, 200, 500, 1000, 2000, 5000, 10000, 20000, 50000, 100000];
@@ -53,7 +53,7 @@ frappe.ui.form.on('Inn Shift', {
 	},
 	print_cash_remittance_button: function (frm, cdt, cdn) {
 		if (frm.doc.__unsaved) {
-			frappe.msgprint("Please save the document changes first, before printing report");
+			frappe.msgprint(__('Please save the document changes first, before printing report'));
 		}
 		else {
 			let w = window.open(frappe.urllib.get_full_url("/printview?"
@@ -64,13 +64,13 @@ frappe.ui.form.on('Inn Shift', {
 				));
 
 			if (!w) {
-				frappe.msgprint(__("Please enable pop-ups")); return;
+				frappe.msgprint(__('Please enable pop-ups')); return;
 			}
 		}
 	},
 	print_cashier_report_button: function(frm, cdt, cdn) {
 		if (frm.doc.__unsaved) {
-			frappe.msgprint("Please save the document changes first, before printing report");
+			frappe.msgprint(__('Please save the document changes first, before printing report'));
 		}
 		else {
 			let w = window.open(frappe.urllib.get_full_url("/printview?"
@@ -81,7 +81,7 @@ frappe.ui.form.on('Inn Shift', {
 				));
 
 			if (!w) {
-				frappe.msgprint(__("Please enable pop-ups")); return;
+				frappe.msgprint(__('Please enable pop-ups')); return;
 			}
 		}
 	},
@@ -96,12 +96,12 @@ frappe.ui.form.on('Inn Shift', {
 					}
 					// Opening is over the max opening allowed
 					else if ( frm.doc.opening > parseFloat(r.message)) {
-						frappe.msgprint("Maximum Opening Cash Allowed is below " + format_currency(r.message, 'IDR') );
+						frappe.msgprint(__('Maximum Opening Cash Allowed is below ' + format_currency(r.message, 'IDR')));
 						frm.set_value('opening', 0);
 					}
 				}
 				else {
-					frappe.msgprint("Error getting Max Opening Cash Value in Inn Hotels Setting. Please define it First.")
+					frappe.msgprint(__('Error getting Max Opening Cash Value in Inn Hotels Setting. Please define it First.'))
 				}
 			}
 		});
@@ -122,7 +122,7 @@ frappe.ui.form.on('Inn Shift', {
 	},
 	close_shift_button: function (frm) {
 		if (frm.is_dirty()) {
-			frappe.msgprint("There are changes  not yet saved in this Shift. Please save the shift first.");
+			frappe.msgprint(__('There are changes not yet saved in this Shift. Please save the shift first.'));
 		}
 		else {
 			frappe.confirm(__("You are about to close the shift. Are you sure?"), function() {
@@ -133,7 +133,7 @@ frappe.ui.form.on('Inn Shift', {
 					},
 					callback: (r) => {
 						if (r.message) {
-							frappe.show_alert(__("Shift Closed."));
+							frappe.show_alert(__('Shift Closed.'));
 							frm.reload_doc();
 						}
 					}

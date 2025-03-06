@@ -139,7 +139,7 @@ def tesa_erase():
 			r.close()
 			return card_number
 	else:
-		frappe.msgprint("Card API url not defined yet. Define the URL in Inn Hotel Setting")
+		frappe.msgprint(_("Card API url not defined yet. Define the URL in Inn Hotel Setting"))
 
 def tesa_checkin(cmd, room_id, expiry_date):
 	# api-endpoint
@@ -172,7 +172,7 @@ def tesa_checkin(cmd, room_id, expiry_date):
 			r.close()
 			return card_number
 	else:
-		frappe.msgprint("Card API url not defined yet. Define the URL in Inn Hotel Setting")
+		frappe.msgprint(_("Card API url not defined yet. Define the URL in Inn Hotel Setting"))
 
 def tesa_verify(track):
 	# api-endpoint
@@ -201,7 +201,7 @@ def tesa_verify(track):
 			r.close()
 			return returned
 	else:
-		frappe.msgprint("Card API url not defined yet. Define the URL in Inn Hotel Setting")
+		frappe.msgprint(_("Card API url not defined yet. Define the URL in Inn Hotel Setting"))
 
 def dows_checkin(building, room_id, expiry_date):
 	api_checkin_url = frappe.db.get_single_value('Inn Hotels Setting', 'card_api_url') + '/checkin'
@@ -226,7 +226,7 @@ def dows_checkin(building, room_id, expiry_date):
 			r.close()
 			return returned['cardNo']
 		else:
-			frappe.msgprint("Error. Fail to Connect to CardEncoder. Please wait a moment and try again.")
+			frappe.msgprint(_("Error. Fail to Connect to CardEncoder. Please wait a moment and try again."))
 
 
 def dows_verify():
@@ -373,7 +373,7 @@ def tesa_check_in(cmd, room, activationDate, activationTime, expiryDate, expiryT
 		else:
 			return "CARD NUMBER FROM TESA CHECK IN"
 	else:
-		frappe.msgprint("Card API url not defined yet. Define the URL in Inn Hotel Setting")
+		frappe.msgprint(_("Card API url not defined yet. Define the URL in Inn Hotel Setting"))
 
 def tesa_read_card(track, pcId="", cmd="RC", technology="P", cardOperation="EF", encoder="1", format="T", message="" ):
 
@@ -416,7 +416,7 @@ def tesa_read_card(track, pcId="", cmd="RC", technology="P", cardOperation="EF",
 			returned = json.loads(r.text)
 			return returned
 	else:
-		frappe.msgprint("Card API url not defined yet. Define the URL in Inn Hotel Setting")
+		frappe.msgprint(_("Card API url not defined yet. Define the URL in Inn Hotel Setting"))
 
 def tesa_read_card1(track, pcId="", cmd="RC", technology="P", cardOperation="EF", encoder="1", format="T", message="" ):
 
@@ -461,7 +461,7 @@ def tesa_read_card1(track, pcId="", cmd="RC", technology="P", cardOperation="EF"
 			returned = json.loads(r.text)
 			return returned
 	else:
-		frappe.msgprint("Card API url not defined yet. Define the URL in Inn Hotel Setting")
+		frappe.msgprint(_("Card API url not defined yet. Define the URL in Inn Hotel Setting"))
 
 def tesa_read_card2(track, pcId="", cmd="RC", technology="P", cardOperation="EF", encoder="1", format="T", message="" ):
 
@@ -506,7 +506,7 @@ def tesa_read_card2(track, pcId="", cmd="RC", technology="P", cardOperation="EF"
 			returned = json.loads(r.text)
 			return returned
 	else:
-		frappe.msgprint("Card API url not defined yet. Define the URL in Inn Hotel Setting")
+		frappe.msgprint(_("Card API url not defined yet. Define the URL in Inn Hotel Setting"))
 
 def tesa_read_card3(track, pcId="", cmd="RC", technology="P", cardOperation="EF", encoder="1", format="T", message="" ):
 
@@ -551,7 +551,7 @@ def tesa_read_card3(track, pcId="", cmd="RC", technology="P", cardOperation="EF"
 			returned = json.loads(r.text)
 			return returned
 	else:
-		frappe.msgprint("Card API url not defined yet. Define the URL in Inn Hotel Setting")
+		frappe.msgprint(_("Card API url not defined yet. Define the URL in Inn Hotel Setting"))
 
 def tesa_read_card4(track, pcId="", cmd="RC", technology="P", cardOperation="EF", encoder="1", format="T", message="" ):
 
@@ -596,4 +596,4 @@ def tesa_read_card4(track, pcId="", cmd="RC", technology="P", cardOperation="EF"
 			returned = json.loads(r.text)
 			return returned
 	else:
-		frappe.msgprint("Card API url not defined yet. Define the URL in Inn Hotel Setting")
+		frappe.msgprint(_("Card API url not defined yet. Define the URL in Inn Hotel Setting"))

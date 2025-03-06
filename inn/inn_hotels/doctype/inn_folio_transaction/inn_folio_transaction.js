@@ -136,7 +136,7 @@ function make_mandatory(frm) {
 	if (frm.doc.flag == 'Credit') {
 		if (frm.doc.mode_of_payment == undefined || frm.doc.mode_of_payment == null) {
 			frappe.validated = false;
-			frappe.msgprint("Please fill Mode of Payment");
+			frappe.msgprint(__("Please fill Mode of Payment"));
 		}
 	}
 }

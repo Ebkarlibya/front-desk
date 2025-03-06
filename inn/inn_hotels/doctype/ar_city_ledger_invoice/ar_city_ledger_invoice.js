@@ -25,8 +25,8 @@ frappe.ui.form.on("AR City Ledger Invoice", {
       function () {
         if (frm.doc.outstanding != 0.0) {
           frappe.msgprint(
-            "Outstanding amount must be zero in order to Make Payment. Please correct the payment details before Making Payment."
-          );
+            __("Outstanding amount must be zero in order to Make Payment. Please correct the payment details before Making Payment.")
+        );
         } else {
           frappe.call({
             method:
@@ -63,7 +63,7 @@ frappe.ui.form.on("AR City Ledger Invoice Payments", {
   payments_add: function (frm) {
     console.log("masuk sini");
     if (!frm.doc.folio || frm.doc.folio.length === 0) {
-      frappe.msgprint("Please add Folio to be Collected first");
+      frappe.msgprint(__("Please add Folio to be Collected first"));
       frm.doc.payments = [];
       frm.refresh_field("payments");
     }

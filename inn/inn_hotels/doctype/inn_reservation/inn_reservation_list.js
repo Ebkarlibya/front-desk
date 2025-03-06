@@ -26,14 +26,14 @@ frappe.listview_settings['Inn Reservation'] = {
                 })
             }
             else {
-                frappe.msgprint("Please only select one reservation at a time");
+                frappe.msgprint(__("Please only select one reservation at a time"));
             }
 
         });
         listview.page.add_action_item(__('Cancel'), function () {
             let reservation_to_cancel = listview.get_checked_items(true);
             frappe.confirm(
-                ('You are about to Cancel Reservations ' + reservation_to_cancel + '. Are you sure?'),
+                __('You are about to Cancel Reservations ' + reservation_to_cancel + '. Are you sure?'),
                 () => {
                     frappe.call({
                         method: 'inn.inn_hotels.doctype.inn_reservation.inn_reservation.cancel_reservation',
@@ -43,12 +43,12 @@ frappe.listview_settings['Inn Reservation'] = {
                         },
                         callback: (r) => {
                             if (r.message === 1) {
-                                frappe.msgprint("For Bulk Cancellation in Reservation List Page, only Reservation with status Reserved can be cancelled.<br />" +
-                                    " Please choose Reservation with Reserved Status only. For Cancelling In House Reservation, go to Reservation Page.");
+                                frappe.msgprint(__("For Bulk Cancellation in Reservation List Page, only Reservation with status Reserved can be cancelled.<br />" +
+                                    " Please choose Reservation with Reserved Status only. For Cancelling In House Reservation, go to Reservation Page."));
                             }
                             else if (r.message === 0) {
                                 cur_list.refresh();
-                                frappe.msgprint("Reservations " + reservation_to_cancel + " successfully canceled.");
+                                frappe.msgprint(__("Reservations {0} successfully canceled.").format(reservation_to_cancel));
                             }
                         }
                     });
@@ -58,7 +58,7 @@ frappe.listview_settings['Inn Reservation'] = {
         listview.page.add_action_item(__('No Show'), function () {
             let reservation_to_no_show = listview.get_checked_items(true);
             frappe.confirm(
-                ('You are about set Reservation(s) ' + reservation_to_no_show + ' status to No Show. Are you sure?'),
+                __('You are about set Reservation(s) ' + reservation_to_no_show + ' status to No Show. Are you sure?'),
                 () => {
                     frappe.call({
                         method: 'inn.inn_hotels.doctype.inn_reservation.inn_reservation.no_show_reservation',
@@ -68,11 +68,11 @@ frappe.listview_settings['Inn Reservation'] = {
                         },
                         callback: (r) => {
                             if (r.message === 1) {
-                                frappe.msgprint("Only Reservation with status Reserved can be set to No Show. Please choose other Reservation");
+                                frappe.msgprint(__("Only Reservation with status Reserved can be set to No Show. Please choose other Reservation"));
                             }
                             else if (r.message === 0) {
                                 cur_list.refresh();
-                                frappe.msgprint("Reservations " + reservation_to_no_show + " successfully set to No Show.");
+                                frappe.msgprint(__("Reservations {0} successfully set to No Show.").format(reservation_to_no_show));
                             }
                         }
                     });

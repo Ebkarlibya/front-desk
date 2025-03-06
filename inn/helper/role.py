@@ -12,7 +12,7 @@ def insert_role():
  
     create_role(data["role"])
     create_role_profile(data["role_profile"]) 
-    frappe.msgprint("Generating Role and Role Profile Success")
+    frappe.msgprint(frappe._("Generating Role and Role Profile Success"))
     return 
 
 def create_role(roles):

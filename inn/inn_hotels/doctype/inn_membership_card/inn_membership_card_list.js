@@ -5,8 +5,30 @@ frappe.listview_settings['Inn Membership Card'] = {
                 generate_card();
             }
         });
-        listview.page.add_menu_item(__('Check Membership Card'), function() {
-            check_membership_cards();
+        listview.page.add_menu_item(__('Check Membership Card'), function () {
+            frappe.prompt(
+                {
+                    label: __('Card Number'),
+                    fieldname: 'card_number',
+                    fieldtype: 'Data',
+                    reqd: 1
+                },
+                function (values) {
+                    frappe.call({
+                        method: 'inn.inn_hotels.doctype.inn_membership_card.inn_membership_card.check_card',
+                        args: {
+                            query: values.card_number
+                        },
+                        callback: function (r) {
+                            if (r.message) {
+                                frappe.msgprint(__(r.message));
+                            }
+                        }
+                    });
+                },
+                __('Check Membership Card'),
+                __('Check')
+            );
         });
     }
 };
@@ -50,7 +72,7 @@ function generate_card() {
                    callback: (r) => {
                       if (r.message) {
                           frappe.set_route("List", "Inn Membership Card",{"":""});
-                          frappe.msgprint( d.get_values().card_amount + ' of  New Membership Cards Generated.');
+                          frappe.msgprint(__(d.get_values().card_amount + ' of  New Membership Cards Generated.'));
                       }
                    }
                });
@@ -59,35 +81,4 @@ function generate_card() {
            d.show();
         }
     });
-}
-
-// Function to show pop up Dialog for checking validity of membership cards
-function check_membership_cards() {
-	let fields = [
-		{
-			'label': __('Card Number'),
-			'fieldname': 'card_number',
-			'fieldtype': 'Data',
-			'reqd': 1
-		},
-	];
-	var d = new frappe.ui.Dialog({
-		title: __('Check Membership Card'),
-		fields: fields,
-	});
-	d.set_primary_action(__('Check'), ()=> {
-		frappe.call({
-			method: 'inn.inn_hotels.doctype.inn_membership_card.inn_membership_card.check_card',
-			args: {
-				query: d.get_values().card_number
-			},
-			callback: (r) => {
-				if (r.message) {
-					frappe.msgprint(r.message);
-				}
-			}
-		});
-		d.hide();
-	});
-	d.show();
 }

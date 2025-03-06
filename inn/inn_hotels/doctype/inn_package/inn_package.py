@@ -43,7 +43,7 @@ def calculate_amounts_before_tax(amount_after_tax, tax_id, total_pax):
 
 		return rate_before[-1], rate_before_per_pax
 	else:
-		frappe.msgprint("Tax Breakdown in " + tax_id + "are not defined. Please define it first.")
+		frappe.msgprint(_("Tax Breakdown in {0} are not defined. Please define it first.").format(tax_id))
 
 @frappe.whitelist()
 def get_package_list(active_flag=None):

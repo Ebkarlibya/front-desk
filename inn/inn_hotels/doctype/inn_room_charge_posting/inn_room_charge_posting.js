@@ -14,7 +14,7 @@ frappe.ui.form.on('Inn Room Charge Posting', {
 				callback: (r) => {
 					if (r.message === 1) {
 						frappe.set_route('List', 'Inn Room Charge Posting');
-						frappe.msgprint('There are Room Charge Posting in progress. Please finish and close it first before opening new one.');
+						frappe.msgprint(__('There are Room Charge Posting in progress. Please finish and close it first before opening new one.'));
 					}
 					else {
 						frm.enable_save();
@@ -74,12 +74,12 @@ frappe.ui.form.on('Inn Room Charge Posting', {
 	},
 	post_individual_button: function(frm, cdt, cdn) {
 		if (frm.doc.__unsaved) {
-			frappe.msgprint("Please save the Room Charge Posting List first before posting.");
+			frappe.msgprint(__('Please save the Room Charge Posting List first before posting.'));
 		}
 		else {
 			let trx_selected = frm.get_field("tobe_posted").grid.get_selected();
 			if (trx_selected.length === 0) {
-				frappe.msgprint('There are no Room Charge selected to be posted.');
+				frappe.msgprint(__('There are no Room Charge selected to be posted.'));
 			}
 			else {
 				console.log(trx_selected)
@@ -94,10 +94,10 @@ frappe.ui.form.on('Inn Room Charge Posting', {
 							if (r.message) {
 								frm.reload_doc();
 								if (frm.doc.tobe_posted.length == 0) {
-									frappe.msgprint('All Room Charge successfully posted: <br> <ul>' + r.message + '</ul><br> This Room Charge Posting now can be Closed');
+									frappe.msgprint(__('All Room Charge successfully posted: <br> <ul>' + r.message + '</ul><br> This Room Charge Posting now can be Closed'));
 								}
 								else {
-									frappe.msgprint('Room Charge successfully posted: <br> <ul>' + r.message + '</ul>');
+									frappe.msgprint(__('Room Charge successfully posted: <br> <ul>' + r.message + '</ul>'));
 								}
 							}
 						}
@@ -108,7 +108,7 @@ frappe.ui.form.on('Inn Room Charge Posting', {
 	},
 	post_all_button: function (frm, cdt, cdn) {
 		if (frm.doc.__unsaved) {
-			frappe.msgprint("Please save the Room Charge Posting List first before posting.");
+			frappe.msgprint(__('Please save the Room Charge Posting List first before posting.'));
 		}
 		else {
 			if (frm.doc.tobe_posted.length > 0) {
@@ -122,14 +122,14 @@ frappe.ui.form.on('Inn Room Charge Posting', {
 						callback: (r) => {
 							if (r.message) {
 								frm.reload_doc();
-								frappe.msgprint('All Room Charge successfully posted: <br> <ul>' + r.message + '</ul><br> This Room Charge Posting now can be Closed');
+								frappe.msgprint(__('All Room Charge successfully posted: <br> <ul>' + r.message + '</ul><br> This Room Charge Posting now can be Closed'));
 							}
 						}
 					});
 				});
 			}
 			else {
-				frappe.msgprint('There are no Room Charge to be posted.');
+				frappe.msgprint(__('There are no Room Charge to be posted.'));
 			}
 		}
 	}

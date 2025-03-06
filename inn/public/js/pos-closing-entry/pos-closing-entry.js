@@ -37,7 +37,7 @@ async function get_overhandle(frm) {
     if (!frm.doc.pos_profile) {
         frappe.msgprint({
             indicator: "red",
-            message: "Please fill out POS Opening Entry, POS Profile, and Cashier first"
+            message: __("Please fill out POS Opening Entry, POS Profile, and Cashier first")
         })
         return
     }
@@ -52,21 +52,17 @@ async function get_overhandle(frm) {
     frm.new_invoice = frm.new_invoice.message
     frappe.msgprint({
         title: __("POS Invoice not Consolidated"),
-        message: __(`
-        <div>
-            <p>These POS Invoice will be taken:</p> <ul>` +
+        message: __(`<div><p>These POS Invoice will be taken:</p> <ul>` +
             frm.new_invoice.map((invoice) => `<li><a href='/app/pos-invoice/${invoice.name}'>${invoice.name}</a> (${invoice.customer})</li>`).join("")
-            + `</ul><p>Do you want to take these invoice(s)?</p>
-        </div>
-    `),
-        primary_action_label: "Overhandle",
+            + `</ul><p>Do you want to take these invoice(s)?</p></div>`),
+        primary_action_label: __("Overhandle"),
         primary_action: {
             async action() {
 
                 await take_overhandle_pos_invoice(frm)
 
                 frappe.show_alert({
-                    message: `All POS Invoice has been overhandled`,
+                    message: __("All POS Invoice has been overhandled"),
                     indicator: "green"
                 })
                 frappe.msg_dialog.hide()
@@ -76,7 +72,7 @@ async function get_overhandle(frm) {
             action() {
                 frappe.msg_dialog.hide()
             },
-            label: "No"
+            label: __("No")
         }
     })
 }
@@ -103,20 +99,16 @@ async function create_overhandle(frm) {
     if (!frm.draft_invoice) {
         frappe.msgprint({
             indicator: "red",
-            message: "Please fill out POS Opening Entry, POS Profile, and Cashier first"
+            message: __("Please fill out POS Opening Entry, POS Profile, and Cashier first")
         })
         return
     }
     frappe.msgprint({
         title: __("POS Invoice not Consolidated"),
-        message: __(`
-        <div>
-            <p>These POS Invoice is not consolidated yet:</p> <ul>` +
+        message: __(`<div><p>These POS Invoice is not consolidated yet:</p> <ul>` +
             frm.draft_invoice.map((invoice) => `<li><a href='/app/pos-invoice/${invoice.name}'>${invoice.name}</a> (${invoice.customer})</li>`).join("")
-            + `</ul><p>Do you want to overhandle these?</p>
-        </div>
-    `),
-        primary_action_label: "Overhandle",
+            + `</ul><p>Do you want to overhandle these?</p></div>`),
+        primary_action_label: __("Overhandle"),
         primary_action: {
             async action() {
                 frm.enable_save()
@@ -130,7 +122,7 @@ async function create_overhandle(frm) {
                 overhandled_number = overhandled_number.message
 
                 frappe.show_alert({
-                    message: `${overhandled_number} POS Invoice has been overhandled`,
+                    message: __(`${overhandled_number} POS Invoice has been overhandled`),
                     indicator: "green"
                 })
                 frappe.msg_dialog.hide()
@@ -140,7 +132,7 @@ async function create_overhandle(frm) {
             action() {
                 frappe.msg_dialog.hide()
             },
-            label: "No"
+            label: __("No")
         }
     })
 

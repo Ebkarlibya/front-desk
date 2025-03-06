@@ -134,7 +134,7 @@ def calculate_rate_breakdown_from_final_rate(room_rate_tax_name, breakfast_tax_n
 					room_rate_before[index] = math.floor(float(room_rate_before[index-1])/denominator)
 					room_rate_after[index] = room_rate_before[index-1]
 	else:
-		frappe.msgprint("Tax Breakdown in " + room_rate_tax_name + " are not defined. Please define it first.")
+		frappe.msgprint(__("Tax Breakdown in " + room_rate_tax_name + " are not defined. Please define it first."))
 
 	# Calculate for breakfast rate
 	breakfast_rate_tax_breakdown_list = frappe.get_all('Inn Tax Breakdown',
@@ -156,7 +156,7 @@ def calculate_rate_breakdown_from_final_rate(room_rate_tax_name, breakfast_tax_n
 					bf_rate_before[index] = math.floor(float(bf_rate_before[index-1])/denominator)
 					bf_rate_after[index] = bf_rate_before[index-1]
 	else:
-		frappe.msgprint("Tax Breakdown in " + breakfast_tax_name + " are not defined. Please define it first.")
+		frappe.msgprint(__("Tax Breakdown in " + breakfast_tax_name + " are not defined. Please define it first."))
 
 	return room_tax_id, room_rate_before, room_rate_after, bf_tax_id, bf_rate_before, bf_rate_after
 

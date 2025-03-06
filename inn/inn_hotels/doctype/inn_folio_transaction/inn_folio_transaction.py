@@ -193,9 +193,11 @@ def void_transaction(trx_id, use_passcode, applicant_reason, requester, bundle_l
 	print (list)
 	if int(use_passcode) == 1:
 		if supervisor_passcode != frappe.db.get_single_value('Inn Hotels Setting', 'supervisor_passcode'):
-			frappe.msgprint("<b>Error: Passcode not correct.</b> <br /> Please consult the correct passcode to supervisor, "
-							"or request void without passcode. "
-							"<br /><br />If you choose to void without passcode, supervisor have to approve the void request manually.")
+			frappe.msgprint(
+    		frappe._("<b>Error: Passcode not correct.</b> <br /> Please consult the correct passcode to supervisor, "
+             "or request void without passcode. "
+             "<br /><br />If you choose to void without passcode, supervisor have to approve the void request manually.")
+				)
 			return 1
 		else:
 			if int(bundle_len) > 1:

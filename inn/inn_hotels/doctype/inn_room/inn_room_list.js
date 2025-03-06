@@ -18,14 +18,14 @@ frappe.listview_settings['Inn Room'] = {
                             callback: (r) => {
                                 if (r.message) {
                                     listview.refresh();
-                                    frappe.msgprint(r.message);
+                                    frappe.msgprint(__(r.message));
                                 }
                             }
                         });
                     });
                 }
                 else {
-                    frappe.msgprint("Please select at least one Room to be cleaned.");
+                    frappe.msgprint(__("Please select at least one Room to be cleaned."));
                 }
             });
 
@@ -43,14 +43,14 @@ frappe.listview_settings['Inn Room'] = {
                             callback: (r) => {
                                 if (r.message) {
                                     listview.refresh();
-                                    frappe.msgprint(r.message);
+                                    frappe.msgprint(__(r.message));
                                 }
                             }
                         });
                     });
                 }
                 else {
-                    frappe.msgprint("Please select at least one Room to be set to Dirty.");
+                    frappe.msgprint(__("Please select at least one Room to be set to Dirty."));
                 }
             });
         }

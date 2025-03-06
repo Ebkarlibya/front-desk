@@ -34,7 +34,7 @@ frappe.ui.form.on('Inn Hotels Setting', {
             },
             callback: function (r) {
                 if (r.message) {
-                    frappe.msgprint(r.message);
+                    frappe.msgprint(__(r.message));
                     frm.refresh(); // Refresh the form to reflect changes
                 }
             }
@@ -56,7 +56,7 @@ frappe.ui.form.on('Inn Hotels Setting', {
             },
             callback: function (r) {
                 if (r.message) {
-                    frappe.msgprint(r.message);
+                    frappe.msgprint(__(r.message));
                     frm.refresh(); // Refresh the form to reflect changes
                 }
             }
@@ -79,7 +79,7 @@ frappe.ui.form.on('Inn Hotels Setting', {
             },
             callback: function (r) {
                 if (r.message) {
-                    frappe.msgprint(r.message);
+                    frappe.msgprint(__(r.message));
                     frm.refresh(); 
                 }
             }
@@ -109,7 +109,7 @@ frappe.ui.form.on('Inn Hotels Setting', {
             },
             callback: function (r) {
                 if (r.message) {
-                    frappe.msgprint(r.message);
+                    frappe.msgprint(__(r.message));
                     frm.refresh(); // Refresh the form to reflect changes
                 }
             }

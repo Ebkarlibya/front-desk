@@ -8,12 +8,12 @@ frappe.ready(function() {
 		date_start = new Date(value);
 		if (date_start < today){
 			field.set_value(0)
-			frappe.msgprint("Start date cannot before today")
+			frappe.msgprint(__("Start date cannot before today"))
 		} else if (date_end == undefined || date_start == undefined){
 			return
 		} else if (date_end <= date_start){
 			field.set_value(0)
-			frappe.msgprint("Start date cannot after end date")
+			frappe.msgprint(__("Start date cannot after end date"))
 		} else {
 			get_available_room_and_rate()
 		}
@@ -24,12 +24,12 @@ frappe.ready(function() {
 		date_end.setHours(1)
 		if (date_end < today){
 			field.set_value(0)
-			frappe.msgprint("End date cannot before tommorow")
+			frappe.msgprint(__("End date cannot before tommorow"))
 		} else if (date_start == undefined || date_end == undefined){
 			return
 		} else if (date_end <= date_start){
 			field.set_value(0)
-			frappe.msgprint("End date must after start date")
+			frappe.msgprint(__("End date must after start date"))
 		} else {
 			get_available_room_and_rate()
 		}
@@ -39,7 +39,7 @@ frappe.ready(function() {
 	frappe.web_form.on("number_of_rooms", (field, value) => {
 		if (value < 1) {
 			field.set_value(1)
-			frappe.msgprint("Number of room must greater than 0")
+			frappe.msgprint(__("Number of room must greater than 0"))
 		} else if (date_end == undefined || date_start == undefined){
 			return
 		} else {

@@ -75,12 +75,12 @@ function respond_request(frm, bundle_len) {
 				if (r.message === 1) {
 					d.hide();
 					frm.refresh();
-					frappe.msgprint("Void Request Approved");
+					frappe.msgprint(__("Void Request Approved"));
 				}
 				else if (r.message === 0) {
 					d.hide();
 					frm.refresh();
-					frappe.msgprint("Void Request Denied");
+					frappe.msgprint(__("Void Request Denied"));
 				}
 			}
 		});

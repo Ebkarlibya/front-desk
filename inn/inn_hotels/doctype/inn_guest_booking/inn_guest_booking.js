@@ -24,12 +24,37 @@ frappe.ui.form.on("Inn Guest Booking", {
                                 }
                         });
                 }
+                frm.add_custom_button(__('Check Membership Card'), function () {
+                        frappe.prompt(
+                                {
+                                        label: __('Card Number'),
+                                        fieldname: 'card_number',
+                                        fieldtype: 'Data',
+                                        reqd: 1
+                                },
+                                function (values) {
+                                        frappe.call({
+                                                method: 'inn.inn_hotels.doctype.inn_membership_card.inn_membership_card.check_card',
+                                                args: {
+                                                        query: values.card_number
+                                                },
+                                                callback: function (r) {
+                                                        if (r.message) {
+                                                                frappe.msgprint(__(r.message));
+                                                        }
+                                                }
+                                        });
+                                },
+                                __('Check Membership Card'),
+                                __('Check')
+                        );
+                });
         },
         start: function (frm) {
                 reset_value(frm, "start")
                 if (frm.doc.end <= frm.doc.start) {
                         frm.set_value("end", null)
-                        frappe.msgprint("Expected Departure must be greater than Expected Arrival")
+                        frappe.msgprint(__("Expected Departure must be greater than Expected Arrival"))
                 } else {
                         // change query to room_type
                 }
@@ -39,7 +64,7 @@ frappe.ui.form.on("Inn Guest Booking", {
                 reset_value(frm, "end")
                 if (frm.doc.end <= frm.doc.start) {
                         frm.set_value("end", null)
-                        frappe.msgprint("Expected Departure must be greater than Expected Arrival")
+                        frappe.msgprint(__("Expected Departure must be greater than Expected Arrival"))
                 } else {
                         // change query to room_type
                 }

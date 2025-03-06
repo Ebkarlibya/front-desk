@@ -36,7 +36,7 @@ def make_payment(id):
     folio_list = doc.folio
     if len(folio_list) == 0:
         frappe.msgprint(
-            "Please add the Folio to be Collected first before making payment"
+            frappe._("Please add the Folio to be Collected first before making payment")
         )
     else:
         for folio in folio_list:

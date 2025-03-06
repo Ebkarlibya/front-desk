@@ -41,7 +41,7 @@ frappe.ui.form.on('Inn Room', {
 										callback: (r) => {
 											if (r.message) {
 												frm.reload_doc();
-												frappe.msgprint(r.message);
+												frappe.msgprint(__(r.message));
 											}
 										}
 									});
@@ -64,7 +64,7 @@ frappe.ui.form.on('Inn Room', {
 										callback: (r) => {
 											if (r.message) {
 												frm.reload_doc();
-												frappe.msgprint(r.message);
+												frappe.msgprint(__(r.message));
 											}
 										}
 									});
@@ -77,33 +77,33 @@ frappe.ui.form.on('Inn Room', {
 
 		frm.add_custom_button(__('Clear Door Status'), function () {
 			frappe.db.set_value(cdt, cdn, 'door_status', 'No Status');
-			frappe.show_alert('Door Status Cleared');
+			frappe.show_alert(__('Door Status Cleared'));
 		});
 		frm.add_custom_button(__('Do Not Disturb'), function () {
 			if (frm.doc.room_status === 'Occupied Clean' || frm.doc.room_status === 'Occupied Dirty') {
 				frappe.db.set_value(cdt, cdn, 'door_status', 'Do Not Disturb');
-				frappe.show_alert('Door Status set to Do Not Disturb');
+				frappe.show_alert(__('Door Status set to Do Not Disturb'));
 			}
 			else {
-				frappe.show_alert('Door Status cannot be changed in Vacant Room');
+				frappe.show_alert(__('Door Status cannot be changed in Vacant Room'));
 			}
 		});
 		frm.add_custom_button(__('Double Lock'), function () {
 			if (frm.doc.room_status === 'Occupied Clean' || frm.doc.room_status === 'Occupied Dirty') {
 				frappe.db.set_value(cdt, cdn, 'door_status', 'Double Lock');
-				frappe.show_alert('Door Status set to Double Lock');
+				frappe.show_alert(__('Door Status set to Double Lock'));
 			}
 			else {
-				frappe.show_alert('Door Status cannot be changed in Vacant Room');
+				frappe.show_alert(__('Door Status cannot be changed in Vacant Room'));
 			}
 		});
 		frm.add_custom_button(__('Sleep Out'), function () {
 			if (frm.doc.room_status === 'Occupied Clean' || frm.doc.room_status === 'Occupied Dirty') {
 				frappe.db.set_value(cdt, cdn, 'door_status', 'Sleeping Out');
-				frappe.show_alert('Door Status set to Sleep Out');
+				frappe.show_alert(__('Door Status set to Sleep Out'));
 			}
 			else {
-				frappe.show_alert('Door Status cannot be changed in Vacant Room');
+				frappe.show_alert(__('Door Status cannot be changed in Vacant Room'));
 			}
 		});
 	},

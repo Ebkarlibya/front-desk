@@ -296,7 +296,7 @@ def generate_folio_transaction_type():
 			'debit_account': frappe.db.get_list('Account', filters={'account_number': '1133.002'})[0].name,
 		}]
 	make_records(folio_transaction_type_records)
-	frappe.msgprint("Generating Default Folio Transaction Type Success")
+	frappe.msgprint(_("Generating Default Folio Transaction Type Success"))
 
 # @frappe.whitelist()
 # def generate_bed_type():
@@ -320,7 +320,7 @@ def generate_folio_transaction_type():
 # 			'description': _('Twin Bed')
 # 		}]
 # 	make_records(bed_records)
-# 	frappe.msgprint("Generating Default Bed Type Success")
+# 	frappe.msgprint(_("Generating Default Bed Type Success"))
 
 @frappe.whitelist()
 def generate_bed_type(bed_type):
@@ -383,7 +383,7 @@ def generate_bed_type(bed_type):
 # 			'description': _('Suite Room')
 # 		}]
 # 	make_records(room_type_records)
-# 	frappe.msgprint("Generating Default Room Type Success")
+# 	frappe.msgprint(_("Generating Default Room Type Success"))
 
 
 
@@ -491,13 +491,13 @@ def create_account(account_name, parent_number, account_number, is_group, accoun
 # 	for item in accounts:
 # 		create_account(item['account_name'], item['parent_number'], item['account_number'], item['is_group'],
 # 				   item['account_currency'], item['account_type'], item['root_type'])
-# 	frappe.msgprint("Generating Account Success")
+# 	frappe.msgprint(_("Generating Account Success"))
 	# create_account('Payroll', '', '6000.000', 1, 'IDR', '', frappe.get_doc("Global Defaults").default_company, 'Expense')
 	# if frappe.db.exists('Account', {'account_number': '6000.000'}) and frappe.db.exists('Account', {'account_number': '7000.000'}):
 	# 	accounts = get_account()
 	# 	for item in accounts:
 	# 		create_account(item['account_name'], item['parent_number'], item['account_number'], item['is_group'], item['account_currency'], item['account_type'])
-	# 	frappe.msgprint("Generating Account Success")
+	# 	frappe.msgprint(_("Generating Account Success"))
 	# else:
 	# 	frappe.msgprint("Please Create account 6000.0000 and 7000.000 in the Chart of Account First")
 

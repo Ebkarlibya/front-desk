@@ -66,7 +66,7 @@ def start_check_in(source, reservation):
             + "?is_check_in=true"
         )
     else:
-        frappe.msgprint("Reservation Status must be Reserved in order to be Checked In")
+        frappe.msgprint(_("Reservation Status must be Reserved in order to be Checked In"))
 
 
 @frappe.whitelist()

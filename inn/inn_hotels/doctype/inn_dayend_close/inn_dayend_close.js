@@ -17,7 +17,7 @@ frappe.ui.form.on('Inn Dayend Close', {
 				callback: (r) => {
 					if (r.message === 1) {
 						frappe.set_route('List', 'Inn Dayend Close');
-						frappe.msgprint('Cannot Create new Dayend Close, Please proceed previous Dayend Close first.');
+						frappe.msgprint(__('Cannot Create new Dayend Close, Please proceed previous Dayend Close first.'));
 					}
 					else {
 						frappe.call({
@@ -28,7 +28,7 @@ frappe.ui.form.on('Inn Dayend Close', {
 								}
 								else {
 									frappe.set_route('List', 'Inn Room Charge Posting');
-									frappe.msgprint('Cannot Create new Dayend Close, Please Process all Room Charge Posting for today first.');
+									frappe.msgprint(__('Cannot Create new Dayend Close, Please Process all Room Charge Posting for today first.'));
 								}
 							}
 						});
@@ -130,10 +130,10 @@ function populate_child(frm) {
 													callback: (response) => {
 														if (response.message === 'Closed') {
 															frm.reload_doc();
-															frappe.msgprint('Day ' + frm.doc.audit_date + ' Closed');
+															frappe.msgprint(__('Day ') + frm.doc.audit_date + __(' Closed'));
 														}
 														else {
-															frappe.msgprint(response.message);
+															frappe.msgprint(__(response.message));
 														}
 													}
 												});

@@ -17,9 +17,7 @@ frappe.ui.form.on("Inn Folio", {
     if (frm.doc.__islocal !== 1) {
       let trx_selected = frm.get_field("folio_transaction").grid.get_selected();
       if (trx_selected.length === 0) {
-        frappe.msgprint(
-          "Please select at least one transaction to be transfered"
-        );
+        frappe.msgprint(__("Please select at least one transaction to be transferred"));
       } else {
         transfer_to_another_folio(frm, trx_selected);
       }
@@ -96,9 +94,7 @@ frappe.ui.form.on("Inn Folio", {
         if (frm.doc.type !== "Guest") {
           frm.page.add_menu_item(__("Close Folio"), function () {
             if (frm.doc.balance !== 0) {
-              frappe.msgprint(
-                "Balance is not 0. There are still transactions needed to be resolved."
-              );
+              frappe.msgprint(__("Balance is not 0. There are still transactions needed to be resolved."));
             } else {
               close_folio(frm);
             }
@@ -163,7 +159,7 @@ frappe.ui.form.on("Inn Folio", {
     if (frm.doc.type != "Desk") {
       if (frm.doc.close < frm.doc.open) {
         frm.set_value("close", null);
-        frappe.msgprint("Close Date must be greater than Open Date");
+        frappe.msgprint(__("Close Date must be greater than Open Date"));
       }
     }
   },
@@ -705,9 +701,7 @@ function void_transaction(child) {
           },
           callback: (r) => {
             if (r.message == "Requested") {
-              frappe.msgprint(
-                "This transaction already requested to be voided. Please wait for supervisor approval."
-              );
+              frappe.msgprint(__("This transaction already requested to be voided. Please wait for supervisor approval."));
             } else if (r.message == "Denied") {
               frappe.call({
                 method:
@@ -741,12 +735,10 @@ function void_transaction(child) {
         });
       }
     } else {
-      frappe.msgprint(
-        "Cannot void this transaction anymore, because this transaction has been inputted to Journal."
-      );
+      frappe.msgprint(__("Cannot void this transaction anymore, because this transaction has been inputted to Journal."));
     }
   } else {
-    frappe.msgprint("This transaction already voided.");
+    frappe.msgprint(__("This transaction already voided."));
   }
 }
 
@@ -868,9 +860,7 @@ function make_mandatory(frm) {
     if (frm.doc.group_id == undefined || frm.doc.group_id == null) {
       console.log("masuk sini");
       frappe.validated = false;
-      frappe.msgprint(
-        "The Group field cannot be empty if folio type is " + frm.doc.type
-      );
+      frappe.msgprint(__("The Group field cannot be empty if folio type is ") + frm.doc.type);
     }
   }
 }
