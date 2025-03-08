@@ -697,11 +697,13 @@ frappe.ui.form.on("Inn Reservation", {
         frm.set_value("actual_breakfast_rate_tax", null);
         frm.set_value("nett_actual_breakfast_rate", 0);
       } else {
+        console.log('test',frm.doc.arrival !== undefined && frm.doc.departure !== undefined)
         frm.set_df_property("sb1", "hidden", 0); // Actual Room Rate Breakdown Section
         calculate_rate_and_bill(frm);
       }
     } else {
       if (parseFloat(frm.doc.actual_room_rate) > 0) {
+        console.log("test_1",frm.doc.actual_room_rate)
         frappe.msgprint(
           __("Please fill Actual Arrival and Actual Departure first.")
         );
@@ -730,12 +732,15 @@ frappe.ui.form.on("Inn Reservation", {
               parseFloat(frm.doc.base_room_rate) *
                 ((100 - frm.doc.discount) / 100)
             );
-            frm.set_value(
-              "actual_room_rate",
-              parseFloat(frm.doc.base_room_rate) *
-                ((100 - frm.doc.discount) / 100)
-            );
-            calculate_rate_and_bill(frm);
+            // frm.set_value(
+            //   "actual_room_rate",
+            //   parseFloat(frm.doc.base_room_rate) *
+            //     ((100 - frm.doc.discount) / 100)
+            // );
+            if (frm.doc.status != "Reserved" || is_check_in == "true") {
+              calculate_rate_and_bill(frm);
+            }
+            // calculate_rate_and_bill(frm);
           } else {
             frappe.msgprint(
               __("Error the discount percentage entered is more than the allowable discount.")
@@ -743,7 +748,10 @@ frappe.ui.form.on("Inn Reservation", {
             frm.set_value("init_actual_room_rate", frm.doc.base_room_rate);
             frm.set_value("actual_room_rate", frm.doc.base_room_rate);
             frm.set_value("discount", 0);
-            calculate_rate_and_bill(frm);
+            if (frm.doc.status != "Reserved" || is_check_in == "true") {
+              calculate_rate_and_bill(frm);
+            }
+            // calculate_rate_and_bill(frm);
           }
         },
       });

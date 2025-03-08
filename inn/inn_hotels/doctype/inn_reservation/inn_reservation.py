@@ -4,10 +4,10 @@
 
 from __future__ import unicode_literals
 import datetime
-import frappe
 import json
 import random
 import string
+import frappe
 from frappe.model.document import Document, flt
 from inn.inn_hotels.doctype.inn_channel.inn_channel import (
     check_channel_commission,
@@ -54,6 +54,7 @@ def check_in_reservation(reservation_id):
 
 @frappe.whitelist()
 def start_check_in(source, reservation):
+    reservation_id = ""
     if source == "list":
         reservation_id = json.loads(reservation)[0]
     elif source == "check_in_button":
@@ -66,7 +67,9 @@ def start_check_in(source, reservation):
             + "?is_check_in=true"
         )
     else:
-        frappe.msgprint(_("Reservation Status must be Reserved in order to be Checked In"))
+        frappe.msgprint(
+            frappe._("Reservation Status must be Reserved in order to be Checked In")
+        )
 
 
 @frappe.whitelist()

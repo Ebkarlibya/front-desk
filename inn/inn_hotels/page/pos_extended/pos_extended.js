@@ -8,12 +8,12 @@ frappe.pages['pos-extended'].on_page_load = function (wrapper) {
 		single_column: true
 	});
 
-	page.add_menu_item("Change POS Profile", () => dialog_pos_profile())
+	page.add_menu_item(__("Change POS Profile"), () => dialog_pos_profile())
 
 	function dialog_pos_profile() {
 		me = this
 		let d = new frappe.ui.Dialog({
-			title: 'Change POS Profile',
+			title: __('Change POS Profile'),
 			fields: [
 				{
 					label: 'POS Opening Profile',
@@ -203,13 +203,13 @@ frappe.pages['pos-extended'].on_page_load = function (wrapper) {
 			}
 
 			prepare_menu() {
-				this.page.add_menu_item(("Open Table Monitor"), () => {
+				this.page.add_menu_item(__("Open Table Monitor"), () => {
 					frappe.set_route("inn-pos-table")
 				}, false, 'Ctrl+T');
-				this.page.add_menu_item(("Open Form View"), this.open_form_view.bind(this), false, 'Ctrl+F');
-				this.page.add_menu_item(("Toggle Recent Orders"), this.toggle_recent_order.bind(this), false, 'Ctrl+O');
-				this.page.add_menu_item(("Save as Draft"), this.save_draft_invoice.bind(this), false, 'Ctrl+S');
-				this.page.add_menu_item(('Close the POS'), this.close_pos.bind(this), false, 'Shift+Ctrl+C');
+				this.page.add_menu_item(__("Open Form View"), this.open_form_view.bind(this), false, 'Ctrl+F');
+				this.page.add_menu_item(__("Toggle Recent Orders"), this.toggle_recent_order.bind(this), false, 'Ctrl+O');
+				this.page.add_menu_item(__("Save as Draft"), this.save_draft_invoice.bind(this), false, 'Ctrl+S');
+				this.page.add_menu_item(__('Close the POS'), this.close_pos.bind(this), false, 'Shift+Ctrl+C');
 			}
 
 			init_recent_order_list() {
