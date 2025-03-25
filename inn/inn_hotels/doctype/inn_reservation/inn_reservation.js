@@ -207,7 +207,7 @@ frappe.ui.form.on("Inn Reservation", {
                 } else if (r.message === 0) {
                   frm.refresh();
                   frappe.msgprint(
-                    __("Reservation " + frm.doc.name + " successfully canceled.")
+                    __("Reservation ") + frm.doc.name + __(" successfully canceled.")
                   );
                 }
               },
@@ -235,9 +235,9 @@ frappe.ui.form.on("Inn Reservation", {
                 } else if (r.message === 0) {
                   frm.refresh();
                   frappe.msgprint(
-                    __("Reservation " +
+                    __("Reservation ") +
                       frm.doc.name +
-                      " successfully set to No Show.")
+                      __(" successfully set to No Show.")
                   );
                 }
               },
@@ -254,9 +254,10 @@ frappe.ui.form.on("Inn Reservation", {
 
       /*Add menu item buttons*/
       frm.page.add_menu_item(__("Cancel"), function () {
+        // !check functionality
         frappe.confirm(
-          __(
-            "You are about to Cancel this Reservation with status already <b>In House</b>. Are you sure?"
+          (
+            __("You are about to Cancel this Reservation with status already") + "<b>"+ __("In House") + "</b>" + __(". Are you sure?")
           ),
           function () {
             frappe.call({
@@ -269,14 +270,14 @@ frappe.ui.form.on("Inn Reservation", {
                 if (r.message === 0) {
                   frm.refresh();
                   frappe.msgprint(
-                    __("Reservation " + frm.doc.name + " successfully canceled.")
+                    __("Reservation ") + frm.doc.name + __(" successfully canceled.")
                   );
                 } else if (r.message === 1) {
                   frappe.msgprint(__("Cancellation Fail. Please try again."));
                 } else if (r.message === 2) {
                   frappe.msgprint(
-                    __("There are several outstanding payments. <br />" +
-                      "Please go to the Folio page to complete payment process before Cancelling Reservation")
+                    __("There are several outstanding payments. ") + "<br />" +
+                      __("Please go to the Folio page to complete payment process before Cancelling Reservation")
                   );
                 }
               },
@@ -294,16 +295,12 @@ frappe.ui.form.on("Inn Reservation", {
       /*Add Warning when changing Arrival and Departure Data*/
       frm.fields_dict.arrival.$input.on("click", function (evt) {
         frappe.show_alert(
-          __(
-            "<b>Warning!</b> <br /> Changing Actual Arrival when Reservation status is In House may cause data inconsistencies."
-          )
+            "<b>" + __("Warning!") + "</b>" + "<br />"+ __("Changing Actual Arrival when Reservation status is In House may cause data inconsistencies.")
         );
       });
       frm.fields_dict.departure.$input.on("click", function (evt) {
         frappe.show_alert(
-          __(
-            "<b>Warning!</b> <br /> Changing Actual Departure when Reservation status is In House may cause data inconsistencies."
-          )
+            "<b>"+__("Warning!") + "</b>" + "<br />" + __("Changing Actual Departure when Reservation status is In House may cause data inconsistencies.")
         );
       });
     }
@@ -338,8 +335,8 @@ frappe.ui.form.on("Inn Reservation", {
           if (frm.doc.expected_arrival < r.message) {
             frm.set_value("expected_arrival", r.message);
             frappe.msgprint(
-              __("Expected Arrival must be greater than last audit date: " +
-                r.message)
+              __("Expected Arrival must be greater than last audit date: ") +
+                r.message
             );
           } else {
             if (
@@ -378,8 +375,8 @@ frappe.ui.form.on("Inn Reservation", {
           if (frm.doc.expected_departure < r.message) {
             frm.set_value("expected_departure", null);
             frappe.msgprint(
-              __("Expected Departure must be greater than last audit date: " +
-                r.message)
+              __("Expected Departure must be greater than last audit date: ") +
+                r.message
             );
           } else if (frm.doc.expected_departure <= frm.doc.expected_arrival) {
             frm.set_value("expected_departure", null);
@@ -436,9 +433,9 @@ frappe.ui.form.on("Inn Reservation", {
           if (frm.doc.arrival < r.message) {
             frm.set_value("arrival", default_arrival);
             frappe.msgprint(
-              __("Actual Arrival must be greater than last audit date: " +
+              __("Actual Arrival must be greater than last audit date: ") +
                 r.message +
-                ". Defaulted to Expected Arrival.")
+                __(". Defaulted to Expected Arrival.")
             );
           } else if (
             date_departure.setHours(0, 0, 0, 0) <=
@@ -497,9 +494,9 @@ frappe.ui.form.on("Inn Reservation", {
           if (frm.doc.departure < r.message) {
             frm.set_value("departure", default_departure);
             frappe.msgprint(
-              __("Actual Departure must be greater than Last Audit Date: " +
+              __("Actual Departure must be greater than Last Audit Date: ") +
                 r.message +
-                ". Defaulted to Expected Departure.")
+                __(". Defaulted to Expected Departure.")
             );
           } else if (
             date_departure.setHours(0, 0, 0, 0) <=
@@ -550,12 +547,12 @@ frappe.ui.form.on("Inn Reservation", {
                         }
                       } else {
                         frappe.msgprint(
-                          __("Cannot change Actual Departure Date to " +
+                          __("Cannot change Actual Departure Date to ") +
                             frm.doc.departure +
-                            ". There are already room booking for Room " +
+                            __(". There are already room booking for Room ") +
                             frm.doc.actual_room_id +
-                            " made for that date." +
-                            " <br>Check <b>Room Availability Page</b> for more detail.")
+                            __(" made for that date.") +
+                            "<br>" + __("Check") + "<b>" + __("Room Availability Page") + "</b>" + __("for more detail.")
                         );
                         frm.set_value("departure", default_departure);
                       }
@@ -778,7 +775,7 @@ frappe.ui.form.on("Inn Reservation", {
             if (r.message !== "ERROR") {
               frm.reload_doc();
               frappe.show_alert(
-                __("Card " + r.message + " issued for this Reservation.")
+                __("Card ") + r.message + __(" issued for this Reservation.")
               );
               return;
             } else {
@@ -1004,10 +1001,10 @@ function autofill(frm) {
           get_available("actual_room_id", "Check In");
           console.log("test");
           frappe.msgprint(
-            __("Currently, Room " +
+            __("Currently, Room ") +
               frm.doc.room_id +
-              " status is not Vacant Ready. " +
-              "Please consult with Room Service or choose another Room to continue Checking In.")
+              __(" status is not Vacant Ready. ") +
+              __("Please consult with Room Service or choose another Room to continue Checking In.")
           );
         }
       },
@@ -1316,8 +1313,8 @@ function process_check_out(frm) {
     callback: (r) => {
       if (r.message !== 0) {
         frappe.msgprint(
-          __("There are several outstanding payments. <br />" +
-            "Please go to the Folio page to complete payment process before Checking Out")
+          __("There are several outstanding payments. ")+"<br />" +
+            __("Please go to the Folio page to complete payment process before Checking Out")
         );
       } else if (r.message == 0) {
         let current_active_card = 0;
@@ -1327,10 +1324,10 @@ function process_check_out(frm) {
         }
         if (current_active_card > 0) {
           frappe.msgprint(
-            __("There are " +
+            __("There are ") +
               current_active_card +
-              " key card(s) still active.<br />" +
-              " Please Deactivate all key cards issued before Checking Out")
+              __(" key card(s) still active.")+"<br />" +
+              __(" Please Deactivate all key cards issued before Checking Out")
           );
         } else {
           frappe.call({
@@ -1355,7 +1352,7 @@ function process_check_out(frm) {
                 });
                 frappe.set_route("Form", "Inn Reservation", frm.doc.name);
                 frappe.show_alert(
-                  __("Successfully Check Out Reservation: " + frm.doc.name)
+                  __("Successfully Check Out Reservation: ") + frm.doc.name
                 );
               } else {
                 frappe.msgprint(r.message);
