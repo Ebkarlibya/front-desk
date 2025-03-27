@@ -297,7 +297,7 @@ function add_package(frm) {
         },
       ];
       var d = new frappe.ui.Dialog({
-        title: __("Add New Package for Folio " + frm.doc.name),
+        title: __("Add New Package for Folio ") + frm.doc.name,
         fields: fields,
       });
       d.set_primary_action(__("Save"), () => {
@@ -389,7 +389,7 @@ function add_charge(frm) {
         },
       ];
       var d = new frappe.ui.Dialog({
-        title: __("Add New Charge for Folio " + frm.doc.name),
+        title: __("Add New Charge for Folio ") + frm.doc.name,
         fields: fields,
       });
       d.set_primary_action(__("Save"), () => {
@@ -503,7 +503,7 @@ function add_payment(frm) {
         },
       ];
       var d = new frappe.ui.Dialog({
-        title: __("Add New Payment for Folio " + frm.doc.name),
+        title: __("Add New Payment for Folio ") + frm.doc.name,
         fields: fields,
       });
       d.set_primary_action(__("Save"), () => {
@@ -552,7 +552,7 @@ function add_payment(frm) {
 // Function to show pop up Dialog for Adding Refund to folio
 function add_refund(frm) {
   var d = new frappe.ui.Dialog({
-    title: __("Add New Refund to Folio " + frm.doc.name),
+    title: __("Add New Refund to Folio ") + frm.doc.name,
     fields: [
       {
         label: __("Amount"),

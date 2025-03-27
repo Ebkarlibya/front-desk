@@ -30,7 +30,7 @@ frappe.ui.form.on('Inn Room', {
 						frm.doc.room_status == 'Vacant Clean') {
 						frm.page.add_menu_item(__('Clean Room'), function () {
 							frappe.confirm(
-								__('You are about to update status of Room ' + frm.doc.name + ', are you sure?'),
+								__('You are about to update status of Room ') + frm.doc.name + __(', are you sure?'),
 								() => {
 									frappe.call({
 										method: 'inn.inn_hotels.doctype.inn_room.inn_room.update_single_room_status',
@@ -53,7 +53,7 @@ frappe.ui.form.on('Inn Room', {
 						frm.doc.room_status == 'Occupied Clean') {
 						frm.page.add_menu_item(__('Dirty Room'), function () {
 							frappe.confirm(
-								__('You are about to update status of Room ' + frm.doc.name + ', are you sure?'),
+								__('You are about to update status of Room ') + frm.doc.name + __(', are you sure?'),
 								() => {
 									frappe.call({
 										method: 'inn.inn_hotels.doctype.inn_room.inn_room.update_single_room_status',

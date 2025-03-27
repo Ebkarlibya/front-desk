@@ -59,7 +59,7 @@ function respond_request(frm, bundle_len) {
 		fields = default_fields;
 	}
 	var d = new frappe.ui.Dialog({
-		title: __('Respond Void of ' + frm.doc.folio_transaction_id),
+		title: __('Respond Void of ') + frm.doc.folio_transaction_id,
 		fields: fields,
 	});
 	d.set_primary_action(__('Save Response'), () => {

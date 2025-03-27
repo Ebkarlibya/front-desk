@@ -19,9 +19,9 @@ frappe.ui.form.on("AR City Ledger Invoice", {
   },
   make_payment: function (frm) {
     frappe.confirm(
-      __(
-        "Please make sure that the payment details (<b>Payment Date, Amount and Mode of Payment</b>) are correct, and <b>Outstanding Amount is zero</b>. Are you want to continue?"
-      ),
+      
+        __("Please make sure that the payment details (") + "<b>" + __("Payment Date, Amount and Mode of Payment") + "</b>"+ __(") are correct, and ") + "<b>" + __("Outstanding Amount is zero") + "</b>" + (". Are you want to continue?")
+      ,
       function () {
         if (frm.doc.outstanding != 0.0) {
           frappe.msgprint(

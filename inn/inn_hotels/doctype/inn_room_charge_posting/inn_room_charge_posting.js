@@ -94,10 +94,10 @@ frappe.ui.form.on('Inn Room Charge Posting', {
 							if (r.message) {
 								frm.reload_doc();
 								if (frm.doc.tobe_posted.length == 0) {
-									frappe.msgprint(__('All Room Charge successfully posted: <br> <ul>' + r.message + '</ul><br> This Room Charge Posting now can be Closed'));
+									frappe.msgprint(__('All Room Charge successfully posted: ') + '<br> <ul>' + r.message + '</ul><br>'+ __('This Room Charge Posting now can be Closed'));
 								}
 								else {
-									frappe.msgprint(__('Room Charge successfully posted: <br> <ul>' + r.message + '</ul>'));
+									frappe.msgprint(__('Room Charge successfully posted: <br> <ul>') + r.message + '</ul>');
 								}
 							}
 						}
@@ -122,7 +122,7 @@ frappe.ui.form.on('Inn Room Charge Posting', {
 						callback: (r) => {
 							if (r.message) {
 								frm.reload_doc();
-								frappe.msgprint(__('All Room Charge successfully posted: <br> <ul>' + r.message + '</ul><br> This Room Charge Posting now can be Closed'));
+								frappe.msgprint(__('All Room Charge successfully posted: <br> <ul>') + r.message + '</ul><br>' + __('This Room Charge Posting now can be Closed'));
 							}
 						}
 					});

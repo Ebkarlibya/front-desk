@@ -190,7 +190,8 @@ def execute(filters=None):
 
 
 def get_report_summary():
-    return """
+    return (
+        """
             <style>
                 .label-container {
                     display: flex;
@@ -206,14 +207,17 @@ def get_report_summary():
                     display: inline-block;
                 }
             </style>
+            """
+        + f"""
 
             <div class="label-container">
-                <span><span class="color-box" style="background-color: #1f78b4;"></span> Room Sold (RS)</span>
-                <span><span class="color-box" style="background-color: #fb9a99;"></span> Under Construction (UC)</span>
-                <span><span class="color-box" style="background-color: #ff7f00;"></span> Office Use (OU)</span>
-                <span><span class="color-box" style="background-color: #e31a1c;"></span> Out of Order (OO)</span>
-                <span><span class="color-box" style="background-color: #fdbf6f;"></span> House Use (HU)</span>
-                <span><span class="color-box" style="background-color: #a6cee3;"></span> Room Compliment (RC)</span>
-                <span><span class="color-box" style="background-color: #33a02c;"></span> Available (AV)</span>
+                <span><span class="color-box" style="background-color: #1f78b4;"></span> {_('Room Sold (RS)')}</span>
+                <span><span class="color-box" style="background-color: #fb9a99;"></span> {_('Under Construction (UC)')}</span>
+                <span><span class="color-box" style="background-color: #ff7f00;"></span> {_('Office Use (OU)')}</span>
+                <span><span class="color-box" style="background-color: #e31a1c;"></span> {_('Out of Order (OO)')}</span>
+                <span><span class="color-box" style="background-color: #fdbf6f;"></span> {_('House Use (HU)')}</span>
+                <span><span class="color-box" style="background-color: #a6cee3;"></span> {_('Room Compliment (RC)')}</span>
+                <span><span class="color-box" style="background-color: #33a02c;"></span> {_('Available (AV)')}</span>
             </div>
         """
+    )
