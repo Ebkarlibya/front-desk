@@ -122,6 +122,7 @@ frappe.ui.form.on('Inn Room', {
 							item.item = d.item;
 							item.item_name = d.item_name;
 							item.qty = d.qty;
+							item.price = d.price;
 						});
 					}
 					frm.refresh_field('amenities');
