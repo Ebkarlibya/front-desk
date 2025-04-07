@@ -1,0 +1,52 @@
+{
+ "actions": [],
+ "allow_rename": 1,
+ "creation": "2025-03-23 12:49:01.654564",
+ "doctype": "DocType",
+ "editable_grid": 1,
+ "engine": "InnoDB",
+ "field_order": [
+  "section_break_rg9x",
+  "companions_name",
+  "passport_number",
+  "nationality"
+ ],
+ "fields": [
+  {
+   "fieldname": "section_break_rg9x",
+   "fieldtype": "Section Break"
+  },
+  {
+   "fieldname": "companions_name",
+   "fieldtype": "Data",
+   "in_list_view": 1,
+   "label": "Companion's Name"
+  },
+  {
+   "fieldname": "passport_number",
+   "fieldtype": "Data",
+   "in_list_view": 1,
+   "label": "Passport Number"
+  },
+  {
+   "fieldname": "nationality",
+   "fieldtype": "Link",
+   "in_list_view": 1,
+   "label": "Nationality",
+   "options": "Country"
+  }
+ ],
+ "grid_page_length": 50,
+ "index_web_pages_for_search": 1,
+ "istable": 1,
+ "links": [],
+ "modified": "2025-04-06 21:51:41.491424",
+ "modified_by": "Administrator",
+ "module": "Inn Hotels",
+ "name": "Accompanying guests",
+ "owner": "Administrator",
+ "permissions": [],
+ "sort_field": "modified",
+ "sort_order": "DESC",
+ "states": []
+}
