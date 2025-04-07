@@ -11,7 +11,10 @@
   "location",
   "date",
   "is_returned",
-  "returned_by"
+  "returned_by",
+  "column_break_hapo",
+  "room",
+  "guest_name"
  ],
  "fields": [
   {
@@ -54,10 +57,27 @@
    "fieldtype": "Link",
    "label": "Return By",
    "options": "Employee"
+  },
+  {
+   "fieldname": "column_break_hapo",
+   "fieldtype": "Column Break"
+  },
+  {
+   "fieldname": "room",
+   "fieldtype": "Link",
+   "label": "No. Room",
+   "options": "Inn Room",
+   "reqd": 1
+  },
+  {
+   "fieldname": "guest_name",
+   "fieldtype": "Data",
+   "label": "Guest Name"
   }
  ],
+ "grid_page_length": 50,
  "links": [],
- "modified": "2024-03-14 11:47:39.564855",
+ "modified": "2025-04-07 15:33:56.458513",
  "modified_by": "Administrator",
  "module": "Inn Hotels",
  "name": "Inn Lost and Found",
@@ -77,25 +97,25 @@
    "write": 1
   },
   {
-   "create": 1,
    "email": 1,
    "export": 1,
+   "permlevel": 1,
    "print": 1,
    "read": 1,
    "report": 1,
-   "role": "Hotel Reservation User",
+   "role": "\u0627\u0644\u0627\u0633\u062a\u0642\u0628\u0627\u0644",
    "share": 1,
    "write": 1
   },
   {
-   "create": 1,
    "delete": 1,
    "email": 1,
    "export": 1,
+   "permlevel": 2,
    "print": 1,
    "read": 1,
    "report": 1,
-   "role": "Hotel Manager",
+   "role": "\u0627\u0644\u0627\u0633\u062a\u0642\u0628\u0627\u0644",
    "share": 1,
    "write": 1
   },
@@ -118,7 +138,7 @@
    "print": 1,
    "read": 1,
    "report": 1,
-   "role": "Housekeeping Assistant",
+   "role": "\u0627\u0644\u0627\u0633\u062a\u0642\u0628\u0627\u0644",
    "share": 1,
    "write": 1
   }
