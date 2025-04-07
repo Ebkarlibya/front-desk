@@ -18,6 +18,7 @@
   "total_night",
   "sb0",
   "guest_name",
+  "accompanying_guests",
   "arrival",
   "departure",
   "room_type",
@@ -319,10 +320,17 @@
    "fieldtype": "Percent",
    "label": "Discount",
    "precision": "2"
+  },
+  {
+   "fieldname": "accompanying_guests",
+   "fieldtype": "Table",
+   "label": "Accompanying Guests",
+   "options": "Accompanying guests"
   }
  ],
+ "grid_page_length": 50,
  "links": [],
- "modified": "2025-03-08 09:39:13.583456",
+ "modified": "2025-04-06 22:26:30.447146",
  "modified_by": "Administrator",
  "module": "Inn Hotels",
  "name": "Inn Reservation",
