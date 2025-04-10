@@ -10,12 +10,10 @@ def execute(filters=None):
     return columns, data
 
 def get_columns():
-    # إضافة الأعمدة الجديدة مع الأعمدة الحالية
     return [
         {"fieldname": "room", "label": _("Room"), "fieldtype": "Link", "options": "Inn Room", "width": 120},
         {"fieldname": "reservation", "label": _("Reservation"), "fieldtype": "Link", "options": "Inn Reservation", "width": 120},
         {"fieldname": "customer", "label": _("Customer"), "fieldtype": "Link", "options": "Inn Customer", "width": 200},
-        # الأعمدة الجديدة في الصف الأب:
         {"fieldname": "status", "label": _("Status"), "fieldtype": "Data", "width": 100},
         {"fieldname": "type", "label": _("Type"), "fieldtype": "Data", "width": 100},
         {"fieldname": "expected_arrival", "label": _("Expected Arrival"), "fieldtype": "Date", "width": 110},
@@ -29,21 +27,15 @@ def get_columns():
 def get_data(filters):
     conditions = []
     filter_params = {}
-
-    # فلتر حسب رقم الحجز إذا تم الإدخال
     if filters.get("reservation"):
         conditions.append("name = %(reservation)s")
         filter_params["reservation"] = filters.get("reservation")
-    
-    # فلترة بناءً على فترة تاريخ الوصول المتوقع
     if filters.get("from_date") and filters.get("to_date"):
         conditions.append("expected_arrival BETWEEN %(from_date)s AND %(to_date)s")
         filter_params["from_date"] = filters.get("from_date")
         filter_params["to_date"] = filters.get("to_date")
-    
     condition_str = " and ".join(conditions) if conditions else "1=1"
     
-    # تحديث الاستعلام لإحضار البيانات المطلوبة
     reservations = frappe.db.sql(
         f""" SELECT name, room_id, customer_id, guest_name,
                     status, type, expected_arrival, expected_departure
@@ -56,7 +48,6 @@ def get_data(filters):
     data = []
     
     for res in reservations:
-        # إنشاء صف أب (Parent row) يحتوي على بيانات الحجز بالكامل
         parent_row = {
             "room": res.room_id,
             "reservation": res.name,
@@ -65,7 +56,7 @@ def get_data(filters):
             "type": res.type,
             "expected_arrival": res.expected_arrival,
             "expected_departure": res.expected_departure,
-            "guest_name": "",  # لا يظهر بيانات الضيوف هنا في الصف الأب
+            "guest_name": "",
             "passport_number": "",
             "nationality": "",
             "is_group": 1  # علامة الصف الرئيسي لكي يكون قابل للطي
@@ -105,7 +96,7 @@ def get_data(filters):
                 "guest_name": res.guest_name,
                 "passport_number": "",
                 "nationality": "",
-                "indent": 1  # علامة الصف الفرعي
+                "indent": 1 
             }
             data.append(child_row)
             
