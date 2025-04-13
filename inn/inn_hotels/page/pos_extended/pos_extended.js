@@ -8,10 +8,10 @@ frappe.pages['pos-extended'].on_page_load = function (wrapper) {
 		single_column: true
 	});
 
-	page.add_menu_item(__("Change POS Profile"), () => dialog_pos_profile())
+	page.add_menu_item(__("Change POS Profile"), () => dialog_pos_profile(wrapper))
 
-	function dialog_pos_profile() {
-		me = this
+	function dialog_pos_profile(page_wrapper) {
+		let me = this
 		let d = new frappe.ui.Dialog({
 			title: __('Change POS Profile'),
 			fields: [
@@ -37,9 +37,13 @@ frappe.pages['pos-extended'].on_page_load = function (wrapper) {
 			primary_action(values) {
 				d.hide();
 
-				onScan.detachFrom(document);
-				wrapper.pos.wrapper.html("");
-				wrapper.pos.change_pos_profile(values.pos_profile_selected);
+                if (typeof onScan !== 'undefined' && onScan && typeof onScan.detachFrom === 'function') {
+					onScan.detachFrom(document);
+				}
+				if (page_wrapper.pos && page_wrapper.pos.wrapper) {
+					page_wrapper.pos.wrapper.html("");
+					page_wrapper.pos.change_pos_profile(values.pos_profile_selected);
+				}
 			},
 		});
 
@@ -58,7 +62,8 @@ frappe.pages['pos-extended'].on_page_load = function (wrapper) {
 	document.getElementsByTagName("head")[0].appendChild(link);
 
 	frappe.require(["point-of-sale.bundle.js", "inn-pos.bundle.js"], function () {
-		inn.PointOfSale.Controller = class MyPosController extends erpnext.PointOfSale.Controller {
+        const BaseControllerClass = inn?.PointOfSale?.Controller || erpnext.PointOfSale.Controller;
+		inn.PointOfSale.Controller = class MyPosController extends BaseControllerClass {
 			constructor(wrapper) {
 				super(wrapper);
 			}
@@ -226,37 +231,40 @@ frappe.pages['pos-extended'].on_page_load = function (wrapper) {
 				})
 			}
 
-			init_item_cart() {
-				this.cart = new inn.PointOfSale.PosExtendItemCart({
-					wrapper: this.$components_wrapper,
-					settings: this.settings,
-					events: {
-						get_frm: () => this.frm,
+            init_item_cart() {
+                this.cart = new inn.PointOfSale.PosExtendItemCart({
+                    wrapper: this.$components_wrapper,
+                    settings: this.settings,
+                    events: {
+                        get_frm: () => this.frm,
 
-						cart_item_clicked: (item) => {
-							const item_row = this.get_item_from_frm(item);
-							this.item_details.toggle_item_details_section(item_row);
-						},
+                        cart_item_clicked: (item) => {
+                            const item_row = this.get_item_from_frm(item);
+                            if (this.item_details && item_row) {
+                                this.item_details.toggle_item_details_section(item_row);
+                            }
+                        },
 
-						numpad_event: (value, action) => this.update_item_field(value, action),
+                        numpad_event: (value, action) => this.update_item_field(value, action),
 
-						checkout: () => this.save_and_checkout(),
+                        checkout: () => this.save_and_checkout(),
 
-						edit_cart: () => this.payment.edit_cart(),
-
-						customer_details_updated: (details) => {
-							this.customer_details = details;
+                        edit_cart: () => { 
+                            if(this.payment) this.payment.edit_cart();
+                        },
+                        customer_details_updated: (details) => {
+                            this.customer_details = details;
 							// will add/remove LP payment method
-							this.payment.render_loyalty_points_payment_mode();
-						},
+                            if(this.payment) this.payment.render_loyalty_points_payment_mode();
+                        },
 
-						print_captain_order: () => this.print_captain_order(),
-						print_table_order: () => this.print_table_order(),
+                        print_captain_order: () => this.print_captain_order(),
+                        print_table_order: () => this.print_table_order(),
 
-						transfer_folio: () => this.dialog_transfer_folio(),
-					}
-				})
-			}
+                        transfer_folio: (grandTotalValueFromCart) => this.dialog_transfer_folio(grandTotalValueFromCart)
+                    }
+                });
+            }
 
 			async save_and_checkout() {
 				await super.save_and_checkout()
@@ -272,11 +280,17 @@ frappe.pages['pos-extended'].on_page_load = function (wrapper) {
 				})
 			}
 
-			dialog_transfer_folio() {
+            dialog_transfer_folio(grandTotalFromCart) {
 				var me = this
 				let d = new frappe.ui.Dialog({
 					title: 'Transfer to Folio',
 					fields: [
+						{
+							"fieldname": "grand_total",
+							"fieldtype": "Read Only",
+							"label": "Grand Total",
+							"default": grandTotalFromCart
+						},
 						{
 							label: 'Inn Folio',
 							fieldname: 'inn_folio_transfer',
@@ -296,6 +310,7 @@ frappe.pages['pos-extended'].on_page_load = function (wrapper) {
 					primary_action_label: 'Select',
 					primary_action(values) {
 						d.hide();
+                        if (!me.frm || !me.frm.doc) {return; }
 						me.transfer_folio(values.inn_folio_transfer)
 					},
 				});
