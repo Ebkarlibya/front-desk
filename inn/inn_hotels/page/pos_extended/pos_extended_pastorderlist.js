@@ -8,6 +8,7 @@ frappe.require(["point-of-sale.bundle.js", "inn-pos.bundle.js"], function () {
         prepare_dom() {
             super.prepare_dom();
             this.add_styles();
+            this.attach_click_listener();
         }
 
         add_styles() {
@@ -94,9 +95,25 @@ frappe.require(["point-of-sale.bundle.js", "inn-pos.bundle.js"], function () {
                     white-space: nowrap;
                 }
                 .past-order-list .seperator { display: none !important; }
+
+                /* نمط الصف المختار */
+                .past-order-list .invoice-wrapper.selected-invoice {
+                    background-color: var(--highlight-color,rgb(149, 212, 243));
+
+                }
+
             `;
             frappe.dom.set_style(style);
             this.styles_added = true;
+        }
+
+        attach_click_listener() {
+            this.$invoices_container.on('click', '.invoice-wrapper', (e) => {
+                const $clicked_row = $(e.currentTarget);
+                const invoice_name = unescape($clicked_row.data('invoice-name'));
+                this.$invoices_container.find('.invoice-wrapper').removeClass('selected-invoice');
+                $clicked_row.addClass('selected-invoice');
+            });
         }
 
         refresh_list() {
@@ -143,6 +160,13 @@ frappe.require(["point-of-sale.bundle.js", "inn-pos.bundle.js"], function () {
                      frappe.dom.unfreeze();
                 }
             });
+            this.clear_selection();
+        }
+
+        clear_selection() {
+            if (this.$invoices_container) {
+                this.$invoices_container.find('.invoice-wrapper').removeClass('selected-invoice');
+            }
         }
 
         get_invoice_html(invoice) {
@@ -186,7 +210,7 @@ frappe.require(["point-of-sale.bundle.js", "inn-pos.bundle.js"], function () {
                 df: {
                     label: __("Search"),
                     fieldtype: "Data",
-                    placeholder: __("Search by invoice id or customer name"),
+                    placeholder: __("Search by invoice id or customer name or table number"),
                 },
                 parent: this.$component.find(".search-field"),
                 render_input: true,

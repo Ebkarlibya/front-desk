@@ -277,21 +277,30 @@ def transfer_to_folio(invoice_doc, folio_name):
 def get_past_order_list_with_table(search_term=None, status=None):
     company = frappe.defaults.get_user_default("company")
 
-    conditions = """
-        WHERE
-            `tabPOS Invoice`.company = %(company)s
-    """
-    args = {
-        "company": company,
-    }
+    conditions_list = ["`tabPOS Invoice`.company = %(company)s"]
+    args = {"company": company}
 
     if status:
-        conditions += " AND `tabPOS Invoice`.status = %(status)s"
+        conditions_list.append("`tabPOS Invoice`.status = %(status)s")
         args["status"] = status
-
+    else:
+         conditions_list.append("`tabPOS Invoice`.docstatus = 0")
     if search_term:
-        conditions += " AND (`tabPOS Invoice`.customer LIKE %(search_term)s OR `tabPOS Invoice`.name LIKE %(search_term)s)"
-        args["search_term"] = "%" + search_term + "%"
+        search_pattern = "%" + search_term + "%"
+        args["search_pattern"] = search_pattern
+        search_conditions = [
+            "`tabPOS Invoice`.customer LIKE %(search_pattern)s",
+            "`tabPOS Invoice`.name LIKE %(search_pattern)s",
+            """EXISTS (
+                   SELECT 1
+                   FROM `tabInn POS Usage` ipu_filter
+                   WHERE ipu_filter.pos_invoice = `tabPOS Invoice`.name
+                   AND ipu_filter.`table` LIKE %(search_pattern)s
+               )"""
+        ]
+        conditions_list.append(f"({' OR '.join(search_conditions)})")
+
+    conditions = "WHERE\n            " + "\n            AND ".join(conditions_list)
 
     query = f"""
         SELECT
@@ -302,6 +311,7 @@ def get_past_order_list_with_table(search_term=None, status=None):
             `tabPOS Invoice`.posting_time,
             `tabPOS Invoice`.currency,
             `tabPOS Invoice`.status,
+            -- `tabPOS Invoice`.docstatus, -- يمكنك إضافته إذا أردت رؤيته
             (SELECT ipu.`table`
              FROM `tabInn POS Usage` ipu
              WHERE ipu.pos_invoice = `tabPOS Invoice`.name
