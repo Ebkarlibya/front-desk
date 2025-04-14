@@ -280,7 +280,6 @@ def get_past_order_list_with_table(search_term=None, status=None):
     conditions = """
         WHERE
             `tabPOS Invoice`.company = %(company)s
-            AND `tabPOS Invoice`.docstatus = 0
     """
     args = {
         "company": company,
