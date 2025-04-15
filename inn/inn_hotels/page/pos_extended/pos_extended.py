@@ -1,6 +1,7 @@
 import frappe
 from inn.inn_hotels.doctype.inn_tax.inn_tax import calculate_inn_tax_and_charges
 import json
+from frappe import _
 
 PRINT_STATUS_DRAFT = 0
 PRINT_STATUS_CAPTAIN = 1
@@ -140,13 +141,15 @@ def save_pos_usage(invoice_name, action, table=None):
 
 @frappe.whitelist()
 def get_table_number(invoice_name):
-    return frappe.db.get_value(
+    data = frappe.db.get_value(
         doctype="Inn POS Usage",
         filters={"pos_invoice": invoice_name},
         fieldname=["table", "transfer_to_folio"],
         as_dict=True,
     )
-
+    if data:
+        data["table_number"] = data["table"]
+    return data
 
 @frappe.whitelist()
 def clean_table_number(invoice_name):
@@ -270,6 +273,60 @@ def transfer_to_folio(invoice_doc, folio_name):
 
     remove_pos_invoice_bill(invoice_doc["name"], folio_name)
 
+@frappe.whitelist()
+def get_past_order_list_with_table(search_term=None, status=None):
+    company = frappe.defaults.get_user_default("company")
+
+    conditions_list = ["`tabPOS Invoice`.company = %(company)s"]
+    args = {"company": company}
+
+    if status:
+        conditions_list.append("`tabPOS Invoice`.status = %(status)s")
+        args["status"] = status
+    else:
+         conditions_list.append("`tabPOS Invoice`.docstatus = 0")
+    if search_term:
+        search_pattern = "%" + search_term + "%"
+        args["search_pattern"] = search_pattern
+        search_conditions = [
+            "`tabPOS Invoice`.customer LIKE %(search_pattern)s",
+            "`tabPOS Invoice`.name LIKE %(search_pattern)s",
+            """EXISTS (
+                   SELECT 1
+                   FROM `tabInn POS Usage` ipu_filter
+                   WHERE ipu_filter.pos_invoice = `tabPOS Invoice`.name
+                   AND ipu_filter.`table` LIKE %(search_pattern)s
+               )"""
+        ]
+        conditions_list.append(f"({' OR '.join(search_conditions)})")
+
+    conditions = "WHERE\n            " + "\n            AND ".join(conditions_list)
+
+    query = f"""
+        SELECT
+            `tabPOS Invoice`.name,
+            `tabPOS Invoice`.customer,
+            `tabPOS Invoice`.grand_total,
+            `tabPOS Invoice`.posting_date,
+            `tabPOS Invoice`.posting_time,
+            `tabPOS Invoice`.currency,
+            `tabPOS Invoice`.status,
+            -- `tabPOS Invoice`.docstatus, -- يمكنك إضافته إذا أردت رؤيته
+            (SELECT ipu.`table`
+             FROM `tabInn POS Usage` ipu
+             WHERE ipu.pos_invoice = `tabPOS Invoice`.name
+             ORDER BY ipu.modified DESC, ipu.creation DESC
+             LIMIT 1) AS table_number
+        FROM
+            `tabPOS Invoice`
+        {conditions}
+        ORDER BY
+            `tabPOS Invoice`.modified DESC
+    """
+
+    invoices = frappe.db.sql(query, args, as_dict=1)
+
+    return invoices
 
 def create_folio_trx(
     invoice_name,
