@@ -7,7 +7,7 @@ frappe.listview_settings['Inn Room'] = {
             listview.page.add_menu_item(__('Clean Room'), function () {
                 if (listview.get_checked_items(true).length > 0) {
                     frappe.confirm(
-                        __('You are about to update status of Room(s) ' + listview.get_checked_items(true) + ', are you sure?'),
+                        __('You are about to update status of Room(s) ') + listview.get_checked_items(true) + __(', are you sure?'),
                         () => {
                         frappe.call({
                             method: 'inn.inn_hotels.doctype.inn_room.inn_room.update_room_status',
@@ -32,7 +32,7 @@ frappe.listview_settings['Inn Room'] = {
             listview.page.add_menu_item(__('Dirty Room'), function () {
                 if (listview.get_checked_items(true).length > 0) {
                     frappe.confirm(
-                        __('You are about to update status of Room(s) ' + listview.get_checked_items(true) + ', are you sure?'),
+                        __('You are about to update status of Room(s) ') + listview.get_checked_items(true) + __(', are you sure?'),
                         () => {
                         frappe.call({
                             method: 'inn.inn_hotels.doctype.inn_room.inn_room.update_room_status',

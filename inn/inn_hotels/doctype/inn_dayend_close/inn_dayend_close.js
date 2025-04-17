@@ -143,8 +143,8 @@ function populate_child(frm) {
 								}
 								else {
 									if (posting_still_open) {
-										frm.set_intro(__("There are still Room Charge Posting still Open, Close it First. " +
-											"Resolve the Reservation's and Folio's status before processing the Dayend Close"));
+										frm.set_intro(__("There are still Room Charge Posting still Open, Close it First. ") +
+											__("Resolve the Reservation's and Folio's status before processing the Dayend Close"));
 									}
 									else {
 										frm.set_intro(__("Resolve the Reservation's and Folio's status before processing the Dayend Close"));

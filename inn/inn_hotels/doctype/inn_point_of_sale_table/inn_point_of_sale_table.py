@@ -7,15 +7,18 @@ import json
 from pathlib import Path
 import frappe
 from frappe.model.document import Document
+from frappe import _
 
 
 class InnPointOfSaleTable(Document):
     pass
 
+
 @frappe.whitelist()
 def get_table_status(table_id):
     table = frappe.get_doc("Inn Point of Sale Table", table_id)
     return table.status
+
 
 @frappe.whitelist()
 def update_table_status(table_id, status):
@@ -35,7 +38,9 @@ def generate_table():
     for table_name in data.table_name:
         if frappe.db.exists("Inn Point of Sale Table", table_name):
             frappe.msgprint(
-                _("Table with {0} already exists").format(table_name), indicator="yellow")
+                _("Table with {0} already exists").format(table_name),
+                indicator="yellow",
+            )
             continue
 
         doc = frappe.new_doc("Inn Point of Sale Table")

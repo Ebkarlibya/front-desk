@@ -275,10 +275,16 @@ frappe.pages['pos-extended'].on_page_load = function (wrapper) {
 			dialog_transfer_folio() {
 				var me = this
 				let d = new frappe.ui.Dialog({
-					title: 'Transfer to Folio',
+					title: __('Transfer to Folio'),
 					fields: [
 						{
-							label: 'Inn Folio',
+							label: __('Grand Total'),
+							fieldname: 'grand_total_display',
+							fieldtype: 'Currency',
+							read_only: 1,
+						},
+						{
+							label: __('Inn Folio'),
 							fieldname: 'inn_folio_transfer',
 							fieldtype: 'Link',
 							options: "Inn Folio",
@@ -292,15 +298,16 @@ frappe.pages['pos-extended'].on_page_load = function (wrapper) {
 							}
 						}
 					],
-					size: 'large', // small, large, extra-large 
-					primary_action_label: 'Select',
+					size: 'large',
+					primary_action_label: __('Select'),
 					primary_action(values) {
 						d.hide();
-						me.transfer_folio(values.inn_folio_transfer)
+						me.transfer_folio(values.inn_folio_transfer);
 					},
 				});
 
-
+				const current_grand_total = me.frm.doc.grand_total;
+				d.set_value('grand_total_display', current_grand_total);
 				d.show();
 			}
 
@@ -430,6 +437,7 @@ frappe.pages['pos-extended'].on_page_load = function (wrapper) {
 			init_order_summary() {
 				this.order_summary = new inn.PointOfSale.PosExtendPastOrderSummary({
 					wrapper: this.$components_wrapper,
+					settings: this.settings,
 					events: {
 						get_frm: () => this.frm,
 

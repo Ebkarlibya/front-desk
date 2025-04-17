@@ -5,6 +5,7 @@
 from __future__ import unicode_literals
 import datetime
 import json
+from frappe import _
 import random
 import string
 import frappe
@@ -22,8 +23,21 @@ from inn.inn_hotels.doctype.inn_folio.inn_folio import (
 
 
 class InnReservation(Document):
-    pass
-
+    def validate(self):
+        """Validate that accompanying guests don't exceed total guests count"""
+        # Calculate total allowed guests (children + adults)
+        total_guests = (self.child or 0) + (self.adult or 0)
+        
+        # Get current number of accompanying guests
+        accompanying_count = len(self.accompanying_guests)
+        
+        # Validate constraint
+        if accompanying_count > total_guests:
+            error_message = _("Number of accompanying guests ({0}) cannot exceed total children and adults ({1})").format(
+                accompanying_count,
+                total_guests
+            )
+            frappe.throw(error_message)
 
 @frappe.whitelist()
 def check_in_reservation(reservation_id):

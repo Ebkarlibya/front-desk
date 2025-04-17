@@ -38,6 +38,10 @@ def calculate_total_amenities_cost(doc, method):
             {"item_code": item.item, "item_name": item.item, "buying": 1},
             ["price_list_rate"],
         )
+        # If item_price is None, use 0.0
+        if item_price is None:
+            item_price = 0.0
+        
         total_cost += float(item_price) * float(item.qty)
 
     doc.total_amenities_cost = total_cost

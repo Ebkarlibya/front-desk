@@ -65,12 +65,12 @@ frappe.query_reports["Room Occupation"] = {
         color = STATUS[value];
         iconHTML = `<i class="fa fa-user" style="margin-right: 5px;"></i>`;
         v = `<span style="color: white;">${iconHTML} ${
-          value !== "" ? value : "N/A"
+          value !== "" ? __(value) : "N/A"
         }</span>`;
         return `<p style='margin:0px;padding-left:5px;background-color:${color}!important;'>${v}</p>`;
     }
     return `<span style="color: ${color};">${iconHTML} ${
-      value !== "" ? value : "N/A"
+      value !== "" ? __(value) : "N/A"
     }</span>`;
   },
 };
