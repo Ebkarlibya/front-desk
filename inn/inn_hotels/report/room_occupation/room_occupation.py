@@ -67,6 +67,11 @@ def get_data(filters):
         if filters.get("room_type")
         else ""
     )
+    sql_room_status_filter = (
+        f"AND r.room_status = {frappe.db.escape(filters.room_status)}"
+        if filters.get("room_status")
+        else ""
+    )
 
     sql = f"""
         SELECT 
@@ -83,6 +88,7 @@ def get_data(filters):
         WHERE 1=1
         {sql_room_filter}
         {sql_room_type_filter}
+        {sql_room_status_filter}
         ORDER BY r.name, rb.start
     """
 
