@@ -2,7 +2,7 @@
 // For license information, please see license.txt
 
 frappe.ui.form.on('Inn Room Charge Posting', {
-	onload: function(frm) {
+	onload: function (frm) {
 		set_audit_date(frm);
 		frm.get_field('tobe_posted').grid.cannot_add_rows = true;
 		frm.get_field('already_posted').grid.cannot_add_rows = true;
@@ -52,9 +52,14 @@ frappe.ui.form.on('Inn Room Charge Posting', {
 			}
 		}
 	},
-	populate: function(frm, cdt, cdn) {
+	populate: function (frm, cdt, cdn) {
+		console.log(frm.doc.already_posted);
+		posted_folios = frm.doc.already_posted
 		frappe.call({
 			method: 'inn.inn_hotels.doctype.inn_room_charge_posting.inn_room_charge_posting.populate_tobe_posted',
+			args: {
+				posted_folios: posted_folios,
+			},
 			callback: (r) => {
 				if (r.message) {
 					frm.set_value('tobe_posted', []);
@@ -72,7 +77,7 @@ frappe.ui.form.on('Inn Room Charge Posting', {
 			}
 		});
 	},
-	post_individual_button: function(frm, cdt, cdn) {
+	post_individual_button: function (frm, cdt, cdn) {
 		if (frm.doc.__unsaved) {
 			frappe.msgprint(__('Please save the Room Charge Posting List first before posting.'));
 		}
@@ -94,7 +99,7 @@ frappe.ui.form.on('Inn Room Charge Posting', {
 							if (r.message) {
 								frm.reload_doc();
 								if (frm.doc.tobe_posted.length == 0) {
-									frappe.msgprint(__('All Room Charge successfully posted: ') + '<br> <ul>' + r.message + '</ul><br>'+ __('This Room Charge Posting now can be Closed'));
+									frappe.msgprint(__('All Room Charge successfully posted: ') + '<br> <ul>' + r.message + '</ul><br>' + __('This Room Charge Posting now can be Closed'));
 								}
 								else {
 									frappe.msgprint(__('Room Charge successfully posted: <br> <ul>') + r.message + '</ul>');

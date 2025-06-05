@@ -24,15 +24,13 @@ web_include_css = "inn.bundle.css"
 # include js in doctype views
 doctype_js = {
     "Purchase Order": "public/js/purchase-order/purchase-order.js",
-    "POS Closing Entry": "public/js/pos-closing-entry/pos-closing-entry.js"
+    "POS Closing Entry": "public/js/pos-closing-entry/pos-closing-entry.js",
 }
 # doctype_list_js = {"doctype" : "public/js/doctype_list.js"}
 # doctype_tree_js = {"doctype" : "public/js/doctype_tree.js"}
 # doctype_calendar_js = {"doctype" : "public/js/doctype_calendar.js"}
 
-override_doctype_class = {
-    "Customer": "inn.overrides.customer.CustomCustomer"
-}
+override_doctype_class = {"Customer": "inn.overrides.customer.CustomCustomer"}
 
 # Home Pages
 # ----------
@@ -42,7 +40,7 @@ override_doctype_class = {
 
 # website user home page (by Role)
 # role_home_page = {
-#	"Role": "home_page"
+# 	"Role": "home_page"
 # }
 
 # Website user home page (by function)
@@ -83,60 +81,53 @@ override_doctype_class = {
 # Hook on document methods and events
 
 doc_events = {
-	# 	"*": {
-	# 		"on_update": "method",
-	# 		"on_cancel": "method",
-	# 		"on_trash": "method"
-	# }
+    # 	"*": {
+    # 		"on_update": "method",
+    # 		"on_cancel": "method",
+    # 		"on_trash": "method"
+    # }
     "POS Invoice": {
-      "before_submit": "inn.overrides.erpnext.accounts.pos_invoice.pos_invoice.before_submit"  
-	},
-	"Inn Tax": {
-		"validate": "inn.inn_hotels.doctype.inn_tax.inn_tax.autofill_inn_tax_value"
-	},
-	"Inn Room Rate": {
-		"validate": "inn.inn_hotels.doctype.inn_room_rate.inn_room_rate.calculate_total_amount"
-	},
-	"Inn Room": {
-		"validate": "inn.inn_hotels.doctype.inn_room.inn_room.calculate_total_amenities_cost"
-	},
-	"Inn Folio Transaction": {
-		"validate": "inn.inn_hotels.doctype.inn_folio_transaction.inn_folio_transaction.add_audit_date"
-	},
+        "before_submit": "inn.overrides.erpnext.accounts.pos_invoice.pos_invoice.before_submit"
+    },
+    "Inn Tax": {
+        "validate": "inn.inn_hotels.doctype.inn_tax.inn_tax.autofill_inn_tax_value"
+    },
+    "Inn Room Rate": {
+        "validate": "inn.inn_hotels.doctype.inn_room_rate.inn_room_rate.calculate_total_amount"
+    },
+    "Inn Room": {
+        "validate": "inn.inn_hotels.doctype.inn_room.inn_room.calculate_total_amenities_cost"
+    },
+    "Inn Folio Transaction": {
+        "validate": "inn.inn_hotels.doctype.inn_folio_transaction.inn_folio_transaction.add_audit_date"
+    },
 }
 
 # Scheduled Tasks
 # ---------------
 
 scheduler_events = {
-# 	"all": [
-# 		"inn.tasks.all"
-# 	],
-# 	"daily": [
-# 		"inn.tasks.daily"
-# 	],
-# 	"hourly": [
-# 		"inn.tasks.hourly"
-# 	],
-	"weekly": [
-		"inn.inn_hotels.doctype.inn_hotels_setting.inn_hotels_setting.generate_supervisor_passcode"
-	]
-# 	"monthly": [
-# 		"inn.tasks.monthly"
-# 	]
+    # 	"all": [
+    # 		"inn.tasks.all"
+    # 	],
+    # 	"daily": [
+    # 		"inn.tasks.daily"
+    # 	],
+    # 	"hourly": [
+    # 		"inn.tasks.hourly"
+    # 	],
+    "weekly": [
+        "inn.inn_hotels.doctype.inn_hotels_setting.inn_hotels_setting.generate_supervisor_passcode"
+    ]
+    # 	"monthly": [
+    # 		"inn.tasks.monthly"
+    # 	]
 }
 
 # Fixture
 # ---------
 
-fixtures = [
-	{
-		"doctype": "Custom Field",
-		"filters": [
-			["module", "=", "Inn Hotels"]
-		]
-	}
-]
+fixtures = [{"doctype": "Custom Field", "filters": [["module", "=", "Inn Hotels"]]}]
 
 
 # Testing
@@ -152,14 +143,13 @@ fixtures = [
 # }
 
 jinja = {
-	"methods": [
-		"inn.inn_hotels.doctype.inn_reservation.inn_reservation.get_total_deposit",
-		"inn.inn_hotels.doctype.inn_reservation.inn_reservation.get_date",
-        
-		"inn.inn_hotels.doctype.inn_pos_usage.inn_pos_usage.print_list_order",
+    "methods": [
+        "inn.inn_hotels.doctype.inn_reservation.inn_reservation.get_total_deposit",
+        "inn.inn_hotels.doctype.inn_reservation.inn_reservation.get_date",
+        "inn.inn_hotels.doctype.inn_pos_usage.inn_pos_usage.print_list_order",
         "inn.inn_hotels.page.pos_extended.pos_extended.get_table_number",
-        "inn.inn_hotels.doctype.inn_pos_usage.inn_extended_bill.extended_bil_extra_data"
-	]
+        "inn.inn_hotels.doctype.inn_pos_usage.inn_extended_bill.extended_bil_extra_data",
+    ]
 }
 
 

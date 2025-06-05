@@ -43,10 +43,18 @@ def is_there_closed_room_charge_posting_at():
 
 
 @frappe.whitelist()
-def populate_tobe_posted():
+def populate_tobe_posted(posted_folios):
     tobe_posted_list = []
+    posted_folios = json.loads(posted_folios)
+    reservation_ids = [folio["reservation_id"] for folio in posted_folios]
     folio_list = frappe.get_all(
-        "Inn Folio", filters={"status": "Open", "type": "Guest"}, fields=["*"]
+        "Inn Folio",
+        filters={
+            "status": "Open",
+            "type": "Guest",
+            "reservation_id": ["not in", reservation_ids],
+        },
+        fields=["*"],
     )
     for item in folio_list:
         reservation = frappe.get_doc("Inn Reservation", item.reservation_id)
