@@ -53,12 +53,11 @@ frappe.ui.form.on('Inn Room Charge Posting', {
 		}
 	},
 	populate: function (frm, cdt, cdn) {
-		console.log(frm.doc.already_posted);
-		posted_folios = frm.doc.already_posted
+		let current_tobe_posted_items = frm.doc.tobe_posted; 
 		frappe.call({
 			method: 'inn.inn_hotels.doctype.inn_room_charge_posting.inn_room_charge_posting.populate_tobe_posted',
 			args: {
-				posted_folios: posted_folios,
+				posted_folios_json_str: JSON.stringify(current_tobe_posted_items) 
 			},
 			callback: (r) => {
 				if (r.message) {
@@ -72,6 +71,11 @@ frappe.ui.form.on('Inn Room Charge Posting', {
 						item.room_rate_id = d.room_rate_id;
 						item.actual_room_rate = d.actual_room_rate;
 					})
+					frm.refresh_field('tobe_posted');
+					frm.save();
+				} else {
+					frm.set_value('tobe_posted', []);
+					frm.refresh_field('tobe_posted');
 					frm.save();
 				}
 			}
