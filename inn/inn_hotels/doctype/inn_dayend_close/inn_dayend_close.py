@@ -7,6 +7,7 @@ from __future__ import unicode_literals
 import frappe
 import datetime
 from frappe.model.document import Document
+from inn.helper.utils import fetch_folio_accounts
 from inn.inn_hotels.doctype.inn_audit_log.inn_audit_log import get_last_audit_date
 from inn.inn_hotels.doctype.inn_folio.inn_folio import check_void_request
 from inn.inn_hotels.doctype.inn_dayend_close.inn_dayend_close_helper import (
@@ -89,94 +90,115 @@ def process_dayend_close(doc_id):
     else:
         print("Folio List Size: ", len(folio_list))
         for item in folio_list:
-            print(datetime.datetime.now(), ": Folio ", item.name)
-            doc_folio = frappe.get_doc("Inn Folio", item.name)
-            if doc_folio.reservation_id:
-                reservation = frappe.get_doc(
-                    "Inn Reservation", doc_folio.reservation_id
+            try:
+                print(datetime.datetime.now(), ": Folio ", item.name)
+                doc_folio = frappe.get_doc("Inn Folio", item.name)
+                if doc_folio.reservation_id:
+                    reservation = frappe.get_doc(
+                        "Inn Reservation", doc_folio.reservation_id
+                    )
+
+                    if reservation.status == "In House":
+                        actual_room = frappe.get_doc(
+                            "Inn Room", reservation.actual_room_id
+                        )
+                        actual_room.room_status = "Occupied Dirty"
+                        actual_room.save()
+
+                trx_list: list[Document] = doc_folio.get("folio_transaction")
+                for trx in trx_list:
+                    if trx.is_void == 0 and trx.journal_entry_id is None:
+                        if trx.remark is None:
+                            remark = trx.transaction_type + " " + trx.parent
+                        elif trx.remark == "":
+                            remark = trx.transaction_type + " " + trx.parent
+                        else:
+                            remark = trx.remark
+                        customer_name = frappe.db.get_value(
+                            "Inn Folio", trx.parent, "customer_id"
+                        )
+                        if not trx.debit_account or not trx.credit_account:
+                            # Fetch debit and credit accounts based on transaction type
+                            accounts = fetch_folio_accounts(trx)
+                            trx.debit_account = accounts["debit_account"]
+                            trx.credit_account = accounts["credit_account"]
+                        doc_je = frappe.new_doc("Journal Entry")
+                        doc_je.title = doc_folio.name
+                        doc_je.voucher_type = "Journal Entry"
+                        doc_je.naming_series = "ACC-JV-.YYYY.-"
+                        doc_je.posting_date = get_last_audit_date()
+                        doc_je.company = frappe.get_doc(
+                            "Global Defaults"
+                        ).default_company
+                        doc_je.total_amount_currency = frappe.get_doc(
+                            "Global Defaults"
+                        ).default_currency
+                        doc_je.remark = remark
+                        doc_je.user_remark = remark
+
+                        doc_jea_debit = frappe.new_doc("Journal Entry Account")
+                        doc_jea_debit.account = trx.debit_account
+                        doc_jea_debit.debit = trx.amount
+                        doc_jea_debit.debit_in_account_currency = trx.amount
+                        doc_jea_debit.party_type, doc_jea_debit.party = (
+                            _fill_party_account(doc_jea_debit.account, customer_name)
+                        )
+                        doc_jea_debit.user_remark = remark
+
+                        if (
+                            trx.transaction_type == COMMISSION_TRANSACTION_TYPE
+                            and doc_jea_debit.party_type == "Supplier"
+                        ):
+                            channel_id = frappe.db.get_value(
+                                "Inn Reservation",
+                                item.reservation_id,
+                                fieldname="channel",
+                            )
+                            channel_vendor = frappe.db.get_value(
+                                "Inn Channel", channel_id, channel_id
+                            )
+                            doc_jea_debit.party = channel_vendor
+
+                        doc_jea_credit = frappe.new_doc("Journal Entry Account")
+
+                        doc_jea_credit.account = trx.credit_account
+                        doc_jea_credit.credit = trx.amount
+                        doc_jea_credit.credit_in_account_currency = trx.amount
+                        doc_jea_credit.party_type, doc_jea_credit.party = (
+                            _fill_party_account(doc_jea_credit.account, customer_name)
+                        )
+                        doc_jea_credit.user_remark = remark
+
+                        if (
+                            trx.transaction_type == COMMISSION_TRANSACTION_TYPE
+                            and doc_jea_credit.party_type == "Supplier"
+                        ):
+                            channel_id = frappe.db.get_value(
+                                "Inn Reservation",
+                                item.reservation_id,
+                                fieldname="channel",
+                            )
+                            channel_vendor = frappe.db.get_value(
+                                doctype="Inn Channel",
+                                filters={"name": channel_id},
+                                fieldname="supplier",
+                            )
+                            doc_jea_credit.party = channel_vendor
+
+                        doc_je.append("accounts", doc_jea_debit)
+                        doc_je.append("accounts", doc_jea_credit)
+
+                        doc_je.save()
+                        doc_je.submit()
+
+                        trx.journal_entry_id = doc_je.name
+                        trx.save()
+            except Exception as e:
+                frappe.log_error(
+                    message=f"{e}\n\nFolio: {item.name}",
+                    title="Error Processing Folio: " + item.name,
                 )
-
-                if reservation.status == "In House":
-                    actual_room = frappe.get_doc("Inn Room", reservation.actual_room_id)
-                    actual_room.room_status = "Occupied Dirty"
-                    actual_room.save()
-
-            trx_list: list[Document] = doc_folio.get("folio_transaction")
-            for trx in trx_list:
-                if trx.is_void == 0 and trx.journal_entry_id is None:
-                    if trx.remark is None:
-                        remark = trx.transaction_type + " " + trx.parent
-                    elif trx.remark == "":
-                        remark = trx.transaction_type + " " + trx.parent
-                    else:
-                        remark = trx.remark
-                    customer_name = frappe.db.get_value(
-                        "Inn Folio", trx.parent, "customer_id"
-                    )
-                    doc_je = frappe.new_doc("Journal Entry")
-                    doc_je.title = doc_folio.name
-                    doc_je.voucher_type = "Journal Entry"
-                    doc_je.naming_series = "ACC-JV-.YYYY.-"
-                    doc_je.posting_date = get_last_audit_date()
-                    doc_je.company = frappe.get_doc("Global Defaults").default_company
-                    doc_je.total_amount_currency = frappe.get_doc(
-                        "Global Defaults"
-                    ).default_currency
-                    doc_je.remark = remark
-                    doc_je.user_remark = remark
-
-                    doc_jea_debit = frappe.new_doc("Journal Entry Account")
-                    doc_jea_debit.account = trx.debit_account
-                    doc_jea_debit.debit = trx.amount
-                    doc_jea_debit.debit_in_account_currency = trx.amount
-                    doc_jea_debit.party_type, doc_jea_debit.party = _fill_party_account(
-                        doc_jea_debit.account, customer_name
-                    )
-                    doc_jea_debit.user_remark = remark
-
-                    if (
-                        trx.transaction_type == COMMISSION_TRANSACTION_TYPE
-                        and doc_jea_debit.party_type == "Supplier"
-                    ):
-                        channel_id = frappe.db.get_value(
-                            "Inn Reservation", item.reservation_id, fieldname="channel"
-                        )
-                        channel_vendor = frappe.db.get_value(
-                            "Inn Channel", channel_id, channel_id
-                        )
-                        doc_jea_debit.party = channel_vendor
-
-                    doc_jea_credit = frappe.new_doc("Journal Entry Account")
-                    doc_jea_credit.account = trx.credit_account
-                    doc_jea_credit.credit = trx.amount
-                    doc_jea_credit.credit_in_account_currency = trx.amount
-                    doc_jea_credit.party_type, doc_jea_credit.party = (
-                        _fill_party_account(doc_jea_credit.account, customer_name)
-                    )
-                    doc_jea_credit.user_remark = remark
-
-                    if (
-                        trx.transaction_type == COMMISSION_TRANSACTION_TYPE
-                        and doc_jea_credit.party_type == "Supplier"
-                    ):
-                        channel_id = frappe.db.get_value(
-                            "Inn Reservation", item.reservation_id, fieldname="channel"
-                        )
-                        channel_vendor = frappe.db.get_value(
-                            doctype="Inn Channel",
-                            filters={"name": channel_id},
-                            fieldname="supplier",
-                        )
-                        doc_jea_credit.party = channel_vendor
-
-                    doc_je.append("accounts", doc_jea_debit)
-                    doc_je.append("accounts", doc_jea_credit)
-
-                    doc_je.save()
-                    doc_je.submit()
-
-                    trx.journal_entry_id = doc_je.name
-                    trx.save()
+                frappe.throw(title="Error", msg=f"Error Processing Folio:  {item.name}")
 
         # Create Journal Entry Pairing for Every Eligible Inn Folio
         closed_folio_list = frappe.get_all(
@@ -189,70 +211,86 @@ def process_dayend_close(doc_id):
             },
         )
         for item in closed_folio_list:
-            doc_folio = frappe.get_doc("Inn Folio", item.name)
-            cust_name = doc_folio.customer_id
-            # Get all Closed folio with close date == last audit date
-            if (
-                doc_folio.journal_entry_id_closed is None
-                and doc_folio.close == get_last_audit_date()
-            ):
-                closed_folio_remark = "Closed Folio Transaction"
-                # Get all transactions that not void
-                closed_trx_list = frappe.get_all(
-                    "Inn Folio Transaction",
-                    filters={"parent": item.name, "is_void": 0},
-                    fields=["*"],
+            try:
+                doc_folio = frappe.get_doc("Inn Folio", item.name)
+                cust_name = doc_folio.customer_id
+                # Get all Closed folio with close date == last audit date
+                if (
+                    doc_folio.journal_entry_id_closed is None
+                    and doc_folio.close == get_last_audit_date()
+                ):
+                    closed_folio_remark = "Closed Folio Transaction"
+                    # Get all transactions that not void
+                    closed_trx_list = frappe.get_all(
+                        "Inn Folio Transaction",
+                        filters={"parent": item.name, "is_void": 0},
+                        fields=["*"],
+                    )
+                    # Folio must not be empty, Because Journal Entry Table Account not allowed to be empty
+                    if len(closed_trx_list) > 0:
+                        doc_je = frappe.new_doc("Journal Entry")
+                        doc_je.title = doc_folio.name
+                        doc_je.voucher_type = "Journal Entry"
+                        doc_je.naming_series = "ACC-JV-.YYYY.-"
+                        doc_je.posting_date = get_last_audit_date()
+                        doc_je.company = frappe.get_doc(
+                            "Global Defaults"
+                        ).default_company
+                        doc_je.total_amount_currency = frappe.get_doc(
+                            "Global Defaults"
+                        ).default_currency
+                        doc_je.remark = closed_folio_remark
+                        doc_je.user_remark = closed_folio_remark
+
+                        for trx in closed_trx_list:
+                            if trx.flag == "Debit":
+                                doc_jea_debit = frappe.new_doc("Journal Entry Account")
+                                doc_jea_debit.account = trx.debit_account
+                                doc_jea_debit.debit = trx.amount
+                                doc_jea_debit.credit_in_account_currency = (
+                                    trx.amount
+                                )  # amount flipped to credit
+                                doc_jea_debit.party_type, doc_jea_debit.party = (
+                                    _fill_party_account(
+                                        doc_jea_debit.account, cust_name
+                                    )
+                                )
+                                doc_jea_debit.user_remark = closed_folio_remark
+                                doc_je.append("accounts", doc_jea_debit)
+                                print(
+                                    f"DEBIT {doc_jea_debit.debit} - {doc_jea_debit.credit_in_account_currency} {trx.remark}"
+                                )
+                            elif trx.flag == "Credit":
+                                doc_jea_credit = frappe.new_doc("Journal Entry Account")
+                                doc_jea_credit.account = trx.credit_account
+                                doc_jea_credit.credit = trx.amount
+                                doc_jea_credit.debit_in_account_currency = (
+                                    trx.amount
+                                )  # amount flipped to debit
+                                doc_jea_credit.party_type, doc_jea_credit.party = (
+                                    _fill_party_account(
+                                        doc_jea_credit.account, cust_name
+                                    )
+                                )
+                                doc_jea_credit.user_remark = closed_folio_remark
+                                doc_je.append("accounts", doc_jea_credit)
+                                print(
+                                    f"CREDIT {doc_jea_credit.credit} - {doc_jea_credit.debit_in_account_currency} {trx.remark} {doc_folio.name}"
+                                )
+
+                        doc_je.save()
+                        doc_je.submit()
+                        doc_folio.journal_entry_id_closed = doc_je.name
+                        doc_folio.save()
+            except Exception as e:
+                frappe.log_error(
+                    message=f"{e}\n\nFolio: {item.name}",
+                    title="Error Processing Closed Folio (journal Entry): " + item.name,
                 )
-                # Folio must not be empty, Because Journal Entry Table Account not allowed to be empty
-                if len(closed_trx_list) > 0:
-                    doc_je = frappe.new_doc("Journal Entry")
-                    doc_je.title = doc_folio.name
-                    doc_je.voucher_type = "Journal Entry"
-                    doc_je.naming_series = "ACC-JV-.YYYY.-"
-                    doc_je.posting_date = get_last_audit_date()
-                    doc_je.company = frappe.get_doc("Global Defaults").default_company
-                    doc_je.total_amount_currency = frappe.get_doc(
-                        "Global Defaults"
-                    ).default_currency
-                    doc_je.remark = closed_folio_remark
-                    doc_je.user_remark = closed_folio_remark
-
-                    for trx in closed_trx_list:
-                        if trx.flag == "Debit":
-                            doc_jea_debit = frappe.new_doc("Journal Entry Account")
-                            doc_jea_debit.account = trx.debit_account
-                            doc_jea_debit.debit = trx.amount
-                            doc_jea_debit.credit_in_account_currency = (
-                                trx.amount
-                            )  # amount flipped to credit
-                            doc_jea_debit.party_type, doc_jea_debit.party = (
-                                _fill_party_account(doc_jea_debit.account, cust_name)
-                            )
-                            doc_jea_debit.user_remark = closed_folio_remark
-                            doc_je.append("accounts", doc_jea_debit)
-                            print(
-                                f"DEBIT {doc_jea_debit.debit} - {doc_jea_debit.credit_in_account_currency} {trx.remark}"
-                            )
-                        elif trx.flag == "Credit":
-                            doc_jea_credit = frappe.new_doc("Journal Entry Account")
-                            doc_jea_credit.account = trx.credit_account
-                            doc_jea_credit.credit = trx.amount
-                            doc_jea_credit.debit_in_account_currency = (
-                                trx.amount
-                            )  # amount flipped to debit
-                            doc_jea_credit.party_type, doc_jea_credit.party = (
-                                _fill_party_account(doc_jea_credit.account, cust_name)
-                            )
-                            doc_jea_credit.user_remark = closed_folio_remark
-                            doc_je.append("accounts", doc_jea_credit)
-                            print(
-                                f"CREDIT {doc_jea_credit.credit} - {doc_jea_credit.debit_in_account_currency} {trx.remark}"
-                            )
-
-                    doc_je.save()
-                    doc_je.submit()
-                    doc_folio.journal_entry_id_closed = doc_je.name
-                    doc_folio.save()
+                frappe.throw(
+                    title="Error",
+                    msg=f"Error Processing Closed Folio (journal Entry): {item.name}",
+                )
 
         # Create Journal Entry for Inn Restaurant Finished Order
         # Get all finished order that not transfered to folio and not paired with journal entry yet

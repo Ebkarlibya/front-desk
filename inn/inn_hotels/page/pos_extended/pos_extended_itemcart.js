@@ -134,7 +134,7 @@ frappe.require(["point-of-sale.bundle.js", "inn-pos.bundle.js"], function () {
                 <div class="caption-order-btn" data-button-value="captain-order">${__('Captain Order')}</div>
                 <div class="table-order-btn" data-button-value="table-order">${__('Table Order')}</div>
             </div>
-            <div class="transfer-btn">Transfer Charges</div> 
+            <div class="transfer-btn">${__('Transfer Charges')}</div> 
             <div class="checkout-btn">${__('Checkout')}</div>
             <div class="edit-cart-btn">${__('Edit Cart')}</div>`
             )
