@@ -1,4 +1,5 @@
 from __future__ import unicode_literals
+from frappe import _
 
 import json
 import frappe
@@ -43,46 +44,47 @@ def is_there_closed_room_charge_posting_at():
 
 
 @frappe.whitelist()
-def populate_tobe_posted(posted_folios):
+def populate_tobe_posted(posted_folios_json_str):
     tobe_posted_list = []
-    posted_folios = json.loads(posted_folios)
-    reservation_ids = [folio["reservation_id"] for folio in posted_folios]
+    hotel_settings = frappe.get_doc("Inn Hotels Setting")
+    room_charge_transaction_type_id = hotel_settings.room_charge
+    current_audit_date = get_last_audit_date()
+    posted_folios = json.loads(posted_folios_json_str)
+    existing_reservation_ids_in_tobe_posted = [folio["reservation_id"] for folio in posted_folios]
     folio_list = frappe.get_all(
         "Inn Folio",
         filters={
             "status": "Open",
             "type": "Guest",
-            "reservation_id": ["not in", reservation_ids],
+            "reservation_id": ["not in", existing_reservation_ids_in_tobe_posted],
         },
-        fields=["*"],
+        fields=["name", "reservation_id"],
     )
     for item in folio_list:
         reservation = frappe.get_doc("Inn Reservation", item.reservation_id)
         if reservation.status == "In House" or reservation.status == "Finish":
-            room_charge_remark = (
-                "Room Charge: Room Rate (Nett): "
-                + reservation.actual_room_id
-                + " - "
-                + get_last_audit_date().strftime("%d-%m-%Y")
-            )
-            if not frappe.db.exists(
+            already_posted_room_charge = frappe.db.exists(
                 "Inn Folio Transaction",
                 {
                     "parent": item.name,
-                    "transaction_type": "Room Charge",
-                    "remark": room_charge_remark,
+                    "transaction_type": room_charge_transaction_type_id,
+                    "audit_date": current_audit_date,
                     "is_void": 0,
                 },
-            ):
-                tobe_posted = frappe.new_doc("Inn Room Charge To Be Posted")
-                tobe_posted.reservation_id = item.reservation_id
-                tobe_posted.folio_id = item.name
-                tobe_posted.room_id = reservation.actual_room_id
-                tobe_posted.customer_id = reservation.customer_id
-                tobe_posted.room_rate_id = reservation.room_rate
-                tobe_posted.actual_room_rate = reservation.actual_room_rate
-                tobe_posted_list.append(tobe_posted)
+            )
+
+            if already_posted_room_charge:
+                continue
+            tobe_posted = frappe.new_doc("Inn Room Charge To Be Posted")
+            tobe_posted.reservation_id = item.reservation_id
+            tobe_posted.folio_id = item.name
+            tobe_posted.room_id = reservation.actual_room_id
+            tobe_posted.customer_id = reservation.customer_id
+            tobe_posted.room_rate_id = reservation.room_rate
+            tobe_posted.actual_room_rate = reservation.actual_room_rate
+            tobe_posted_list.append(tobe_posted)
     return tobe_posted_list
+
 
 
 @frappe.whitelist()
