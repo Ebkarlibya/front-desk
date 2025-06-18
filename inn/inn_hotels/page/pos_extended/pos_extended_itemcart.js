@@ -112,6 +112,7 @@ frappe.require(["point-of-sale.bundle.js", "inn-pos.bundle.js"], function () {
 
         make_cart_totals_section() {
             this.$totals_section = this.$component.find('.cart-totals-section');
+            this.$totals_section.empty();
 
             this.$totals_section.append(
                 `<div class="add-discount-wrapper">
@@ -134,12 +135,21 @@ frappe.require(["point-of-sale.bundle.js", "inn-pos.bundle.js"], function () {
                 <div class="caption-order-btn" data-button-value="captain-order">${__('Captain Order')}</div>
                 <div class="table-order-btn" data-button-value="table-order">${__('Table Order')}</div>
             </div>
-            <div class="transfer-btn">${__('Transfer Charges')}</div> 
+            <div class="transfer-btn">${__('Transfer Charges To Folio')}</div> 
+            <div class="btn-transfer-charge-to-customer">${__('Transfer Charge To Customer')}</div>
             <div class="checkout-btn">${__('Checkout')}</div>
             <div class="edit-cart-btn">${__('Edit Cart')}</div>`
             )
 
             this.$add_discount_elem = this.$component.find(".add-discount-wrapper");
+        }
+        highlight_checkout_btn(toggle) {
+            super.highlight_checkout_btn(toggle);
+            const target_color = toggle ? 'var(--gray-800)' : 'var(--gray-300)';
+            this.$cart_container.find('.caption-order-btn').css({ 'background-color': target_color });
+            this.$cart_container.find('.table-order-btn').css({ 'background-color': target_color });
+            this.$cart_container.find('.transfer-btn').css({ 'background-color': target_color });
+            this.$cart_container.find('.btn-transfer-charge-to-customer').css({ 'background-color': target_color });
         }
 
         highlight_checkout_btn(toggle) {
@@ -154,6 +164,9 @@ frappe.require(["point-of-sale.bundle.js", "inn-pos.bundle.js"], function () {
                 this.$cart_container.find('.transfer-btn').css({
                     'background-color': 'var(--gray-800)'
                 });
+                this.$cart_container.find('.btn-transfer-charge-to-customer').css({
+                    'background-color': 'var(--gray-800)'
+                });                
             } else {
                 this.$cart_container.find('.caption-order-btn').css({
                     'background-color': 'var(--gray-300)'
@@ -162,6 +175,9 @@ frappe.require(["point-of-sale.bundle.js", "inn-pos.bundle.js"], function () {
                     'background-color': 'var(--gray-300)'
                 });
                 this.$cart_container.find('.transfer-btn').css({
+                    'background-color': 'var(--gray-300)'
+                });
+                this.$cart_container.find('.btn-transfer-charge-to-customer').css({
                     'background-color': 'var(--gray-300)'
                 });
             }
@@ -177,26 +193,39 @@ frappe.require(["point-of-sale.bundle.js", "inn-pos.bundle.js"], function () {
 
             const me = this;
             this.$component.on("click", ".caption-order-btn", async function () {
-                if ($(this).attr('style').indexOf('--gray-800') == -1) return;
-
+                if (String($(this).css('background-color')).includes('var(--gray-300)')) return;
                 await me.events.print_captain_order();
-            })
+            });
 
             this.$component.on("click", ".table-order-btn", async function () {
-                if ($(this).attr('style').indexOf('--gray-800') == -1) return;
-
+                if (String($(this).css('background-color')).includes('var(--gray-300)')) return;
                 await me.events.print_table_order();
-            })
+            });
 
             this.$component.on("click", ".transfer-btn", async function () {
-                if ($(this).attr('style').indexOf('--gray-800') == -1) return;
+                if (String($(this).css('background-color')).includes('var(--gray-300)')) return;
+                if (me.events && me.events.transfer_folio) {
+                    await me.events.transfer_folio();
+                } else {
+                    console.error("PosExtendItemCart: Event 'transfer_folio' is not defined.");
+                }
+            });
 
-                await me.events.transfer_folio();
-            })
+            // --- ربط الحدث للزر  "Transfer Charge To Customer" ---
+            this.$component.on("click", ".btn-transfer-charge-to-customer", async function () {
+                if (String($(this).css('background-color')).includes('var(--gray-300)')) return;
+
+                if (me.events && me.events.transfer_charge_to_customer_dialog) {
+                    await me.events.transfer_charge_to_customer_dialog();
+                } else {
+                    console.error("PosExtendItemCart: Event 'transfer_charge_to_customer_dialog' is not defined.");
+                    frappe.show_alert({message: "Transfer to Customer functionality not available.", indicator: "red"});
+                }
+            });
 
             this.$component.on("click", ".reset-table-btn", async function () {
-                me.reset_table_section()
-            })
+                me.reset_table_section();
+            });
         }
     }
 })

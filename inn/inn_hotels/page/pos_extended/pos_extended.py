@@ -2,6 +2,7 @@ import frappe
 from inn.inn_hotels.doctype.inn_tax.inn_tax import calculate_inn_tax_and_charges
 import json
 from frappe import _
+from frappe.utils import flt, get_datetime 
 
 PRINT_STATUS_DRAFT = 0
 PRINT_STATUS_CAPTAIN = 1
@@ -394,3 +395,71 @@ def remove_pos_invoice_bill(invoice_name: str, folio_name: str):
         f"Transferred to {folio_name}",
     )
     frappe.db.set_value("POS Invoice", invoice_name, "status", "Consolidated")
+    
+@frappe.whitelist()
+def transfer_charge_to_customer(pos_invoice_doc, paying_customer, original_customer=None):
+    try:
+        invoice = frappe._dict(pos_invoice_doc) if isinstance(pos_invoice_doc, dict) else json.loads(pos_invoice_doc)
+        invoice_name = invoice.get("name")
+        grand_total = flt(invoice.get("grand_total"))
+        company = invoice.get("company")
+        posting_date = get_datetime(invoice.get("posting_date")).date()
+
+        if not all([invoice_name, grand_total > 0, company, paying_customer]):
+            frappe.throw(_("Missing required data: Invoice Name, Grand Total, Company, or Paying Customer."))
+
+        # 1. جلب حساب "Customer Charge Account" من الإعدادات
+        customer_charge_settings_doctype = "Inn Hotels Setting"
+        customer_charge_account_field = "customer_charge_account"
+
+        charge_transfer_account = frappe.db.get_single_value(customer_charge_settings_doctype, customer_charge_account_field)
+        if not charge_transfer_account:
+            frappe.throw(_("Customer Charge Transfer Account is not set in {0}.").format(customer_charge_settings_doctype))
+
+        # 2. جلب الحساب المدين للعميل الدافع (Paying Customer)
+        paying_customer_doc = frappe.get_doc("Customer", paying_customer)
+        customer_receivable_account = paying_customer_doc.get("receivable_account")
+        if not customer_receivable_account:
+            # كحل بديل، جلب الحساب الافتراضي للذمم المدينة من الشركة
+            customer_receivable_account = frappe.get_cached_value('Company', company, 'default_receivable_account')
+            if not customer_receivable_account:
+                 frappe.throw(_("Receivable account for paying customer {0} not found, and no default set for company {1}.").format(paying_customer, company))
+
+        # 3. إنشاء قيد يومية (Journal Entry)        
+        je = frappe.new_doc("Journal Entry")
+        je.voucher_type = "Journal Entry"
+        je.posting_date = posting_date
+        je.company = company
+        je.user_remark = _("Transfer of POS Invoice {0} charge (originally for {1}) to customer {2}.")\
+            .format(invoice_name, original_customer or _("Walk-in"), paying_customer)
+
+        # الطرف المدين: حساب العميل الدافع       
+        je.append("accounts", {
+            "account": customer_receivable_account,
+            "party_type": "Customer",
+            "party": paying_customer,
+            "debit_in_account_currency": grand_total,
+            "cost_center": invoice.get("cost_center") 
+        })
+
+        # الطرف الدائن: حساب تحويل رسوم العملاء        
+        je.append("accounts", {
+            "account": charge_transfer_account,
+            "credit_in_account_currency": grand_total,
+            "cost_center": invoice.get("cost_center")
+        })
+
+        je.flags.ignore_mandatory = True
+        je.submit()
+
+        return {
+            "status": "success",
+            "journal_entry": je.name
+        }
+
+    except Exception as e:
+        frappe.log_error(frappe.get_traceback(), "transfer_charge_to_customer Error")
+        return {
+            "status": "error",
+            "error": str(e)
+        }
