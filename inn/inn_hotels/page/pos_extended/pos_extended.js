@@ -295,9 +295,10 @@ frappe.pages['pos-extended'].on_page_load = function (wrapper) {
                         frappe.call({
                             method: 'inn.inn_hotels.page.pos_extended.pos_extended.transfer_charge_to_customer',
                             args: {
-                                pos_invoice_doc: JSON.stringify(frm_doc),
+                                cart_data_str: JSON.stringify(frm_doc),
                                 paying_customer: values.paying_customer,
-                                original_customer: frm_doc.customer
+                                original_customer: frm_doc.customer,
+								pos_profile_name: frm_doc.pos_profile
                             },
                             freeze: true,
                             freeze_message: __("Processing charge transfer..."),
