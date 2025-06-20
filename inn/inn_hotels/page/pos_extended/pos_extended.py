@@ -400,6 +400,7 @@ def remove_pos_invoice_bill(invoice_name: str, folio_name: str):
 def transfer_charge_to_customer(cart_data_str, paying_customer,pos_profile_name, original_customer=None):
     try:
         cart_data = json.loads(cart_data_str)
+        items_to_issue = cart_data.get("items", [])
         invoice = frappe._dict(cart_data_str) if isinstance(cart_data_str, dict) else json.loads(cart_data_str)
         invoice_name = invoice.get("name")
         grand_total = flt(invoice.get("grand_total"))
@@ -453,6 +454,7 @@ def transfer_charge_to_customer(cart_data_str, paying_customer,pos_profile_name,
 
         je.flags.ignore_mandatory = True
         je.submit()
+        
         items_to_issue = cart_data.get("items", [])
         se_items_list = []
         for cart_item in items_to_issue:
@@ -463,7 +465,7 @@ def transfer_charge_to_customer(cart_data_str, paying_customer,pos_profile_name,
                 "stock_uom": cart_item.get("stock_uom"),
                 "conversion_factor": cart_item.get("conversion_factor"),
                 "basic_rate": cart_item.get("rate"),
-            })            
+            })
         create_material_issue_from_pos(pos_profile_name, se_items_list)
         return {
             "status": "success",
@@ -477,7 +479,7 @@ def transfer_charge_to_customer(cart_data_str, paying_customer,pos_profile_name,
             "error": str(e)
         }
         
-def create_material_issue_from_pos(pos_profile_name, items_list,folio_name=None,):
+def create_material_issue_from_pos(pos_profile_name, items_list,folio_name=None):
     """
     Creates a Material Issue (Stock Entry) based on a POS Profile using a detailed
     items list. It fetches the warehouse from the POS Profile and issues only
