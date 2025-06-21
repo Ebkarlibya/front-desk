@@ -226,37 +226,112 @@ frappe.pages['pos-extended'].on_page_load = function (wrapper) {
 				})
 			}
 
-			init_item_cart() {
-				this.cart = new inn.PointOfSale.PosExtendItemCart({
-					wrapper: this.$components_wrapper,
-					settings: this.settings,
-					events: {
-						get_frm: () => this.frm,
+            init_item_cart() {
+                this.cart = new inn.PointOfSale.PosExtendItemCart({
+                    wrapper: this.$components_wrapper,
+                    settings: this.settings,
+                    events: {
+                        get_frm: () => this.frm,
 
-						cart_item_clicked: (item) => {
-							const item_row = this.get_item_from_frm(item);
-							this.item_details.toggle_item_details_section(item_row);
-						},
+                        cart_item_clicked: (item) => {
+                            const item_row = this.get_item_from_frm(item);
+                            this.item_details.toggle_item_details_section(item_row);
+                        },
 
-						numpad_event: (value, action) => this.update_item_field(value, action),
+                        numpad_event: (value, action) => this.update_item_field(value, action),
 
-						checkout: () => this.save_and_checkout(),
+                        checkout: () => this.save_and_checkout(),
 
-						edit_cart: () => this.payment.edit_cart(),
+                        edit_cart: () => this.payment.edit_cart(),
 
-						customer_details_updated: (details) => {
-							this.customer_details = details;
-							// will add/remove LP payment method
-							this.payment.render_loyalty_points_payment_mode();
-						},
+                        customer_details_updated: (details) => {
+                            this.customer_details = details;
+                            this.payment.render_loyalty_points_payment_mode();
+                        },
 
-						print_captain_order: () => this.print_captain_order(),
-						print_table_order: () => this.print_table_order(),
+                        print_captain_order: () => this.print_captain_order(),
+                        print_table_order: () => this.print_table_order(),
 
-						transfer_folio: () => this.dialog_transfer_folio(),
-					}
-				})
-			}
+                        transfer_folio: () => this.dialog_transfer_folio(),
+                        // --- إضافة الحدث الجديد لفتح نافذة تحويل التكلفة إلى عميل ---
+                        transfer_charge_to_customer_dialog: () => {
+                            this.dialog_transfer_charge_to_customer();
+                        }
+                    }
+                })
+            }
+            dialog_transfer_charge_to_customer() {
+                const frm_doc = this.frm.doc;
+                if (!frm_doc.items || !frm_doc.items.length) {
+                    frappe.show_alert({ message: __("Add items to the cart to transfer charge."), indicator: "orange" });
+                    return;
+                }
+                const me = this;
+                let d = new frappe.ui.Dialog({
+                    title: __('Transfer Charge To Customer'),
+                    fields: [
+                        {
+                            label: __('Grand Total'),
+                            fieldname: 'grand_total_display',
+                            fieldtype: 'Currency',
+                            default: frm_doc.grand_total,
+                            read_only: 1,
+                            col: 6
+                        },
+                        {
+                            label: __('Paying Customer'),
+                            fieldname: 'paying_customer',
+                            fieldtype: 'Link',
+                            options: 'Customer',
+                            reqd: 1,
+                            col: 6,
+                            description: __("Select the customer who will pay this bill.")
+                        }
+                    ],
+                    size: 'small',
+                    primary_action_label: __('Transfer Charge'),
+                    primary_action(values) {
+                        d.hide();
+                        frappe.call({
+                            method: 'inn.inn_hotels.page.pos_extended.pos_extended.transfer_charge_to_customer',
+                            args: {
+                                cart_data_str: JSON.stringify(frm_doc),
+                                paying_customer: values.paying_customer,
+                                original_customer: frm_doc.customer,
+								pos_profile_name: frm_doc.pos_profile
+                            },
+                            freeze: true,
+                            freeze_message: __("Processing charge transfer..."),
+                            callback: function(r) {
+                                if (r.message && r.message.status === "success") {
+                                    frappe.show_alert({
+                                        message: __("Charge transferred successfully to {0}. Journal Entry: {1}", [values.paying_customer, r.message.journal_entry]),
+                                        indicator: "green"
+                                    });
+
+                                    me.make_new_invoice();
+
+                                } else {
+                                    frappe.msgprint({
+                                        title: __('Error'),
+                                        indicator: 'red',
+                                        message: (r.message && r.message.error) ? r.message.error : __('Failed to transfer charge.')
+                                    });
+                                }
+                            },
+                            error: function(err) {
+                                frappe.msgprint({
+                                    title: __('Error'),
+                                    indicator: 'red',
+                                    message: __('An unexpected error occurred. Check console for details.')
+                                });
+                                console.error("Error in Python transfer_charge_to_customer call:", err);
+                            }
+                        });
+                    }
+                });
+                d.show();
+            }
 
 			async save_and_checkout() {
 				await super.save_and_checkout()
