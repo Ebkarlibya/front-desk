@@ -87,10 +87,10 @@
    "label": "Bulk Update Reservation Details"
   },
   {
-   "description": "Set a new customer for selected reservations in the table",
+   "description": "Set a new customer for all reservations in the table",
    "fieldname": "new_customer",
    "fieldtype": "Link",
-   "label": "New Customer (Apply to Selected)",
+   "label": "Customer",
    "options": "Customer"
   },
   {
@@ -98,20 +98,20 @@
    "fieldtype": "Column Break"
   },
   {
-   "description": "Set a new Check-in Date for selected reservations in the table",
+   "description": "Set a new Check-in Date for all reservations in the table",
    "fieldname": "new_date_start",
    "fieldtype": "Date",
-   "label": "New Check-in Date (Apply to Selected)"
+   "label": "Check-in Date"
   },
   {
    "fieldname": "column_break_dcpy",
    "fieldtype": "Column Break"
   },
   {
-   "description": "Set a new Check-out Date for selected reservations in the table",
+   "description": "Set a new Check-out Date for all reservations in the table",
    "fieldname": "new_date_end",
    "fieldtype": "Date",
-   "label": "New Check-out Date (Apply to Selected)"
+   "label": "Check-out Date"
   },
   {
    "fieldname": "column_break_zais",
@@ -122,7 +122,7 @@
  "index_web_pages_for_search": 1,
  "is_submittable": 1,
  "links": [],
- "modified": "2025-06-22 22:06:13.898335",
+ "modified": "2025-06-23 00:01:24.850207",
  "modified_by": "Administrator",
  "module": "Inn Hotels",
  "name": "Extend Reservation",

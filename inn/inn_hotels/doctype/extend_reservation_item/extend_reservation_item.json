@@ -101,10 +101,9 @@
    "label": "New Check-out Date"
   },
   {
-   "description": "Link to the newly created reservation (if applicable)",
+   "description": "Link to the newly created reservation",
    "fieldname": "new_reservation_id",
    "fieldtype": "Link",
-   "in_list_view": 1,
    "label": "New Reservation Created",
    "options": "Inn Reservation",
    "read_only": 1
@@ -114,7 +113,7 @@
  "index_web_pages_for_search": 1,
  "istable": 1,
  "links": [],
- "modified": "2025-06-22 23:09:15.456445",
+ "modified": "2025-06-22 23:56:58.729571",
  "modified_by": "Administrator",
  "module": "Inn Hotels",
  "name": "Extend Reservation Item",
