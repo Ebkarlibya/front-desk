@@ -32,7 +32,7 @@ frappe.pages['pos-extended'].on_page_load = function (wrapper) {
 					}
 				}
 			],
-			size: 'large', // small, large, extra-large 
+			size: 'large',
 			primary_action_label: 'Select',
 			primary_action(values) {
 				d.hide();
@@ -253,7 +253,6 @@ frappe.pages['pos-extended'].on_page_load = function (wrapper) {
                         print_table_order: () => this.print_table_order(),
 
                         transfer_folio: () => this.dialog_transfer_folio(),
-                        // --- إضافة الحدث الجديد لفتح نافذة تحويل التكلفة إلى عميل ---
                         transfer_charge_to_customer_dialog: () => {
                             this.dialog_transfer_charge_to_customer();
                         }
@@ -387,6 +386,7 @@ frappe.pages['pos-extended'].on_page_load = function (wrapper) {
 			}
 
 			transfer_folio(folio_id) {
+				const frm_doc = this.frm.doc;
 				frappe.run_serially([
 					() => frappe.dom.freeze(),
 
@@ -394,7 +394,7 @@ frappe.pages['pos-extended'].on_page_load = function (wrapper) {
 						.then((r) => {
 							this.toggle_components(false);
 							this.order_summary.toggle_component(true);
-							this.order_summary.load_summary_of(this.frm.doc, true);
+							// this.order_summary.load_summary_of(this.frm.doc, true);
 
 							frappe.call({
 								method: "inn.inn_hotels.page.pos_extended.pos_extended.save_pos_usage",
@@ -405,7 +405,6 @@ frappe.pages['pos-extended'].on_page_load = function (wrapper) {
 								},
 								async: false
 							})
-
 							frappe.call({
 								method: "inn.inn_hotels.page.pos_extended.pos_extended.clean_table_number",
 								async: false,
@@ -413,20 +412,21 @@ frappe.pages['pos-extended'].on_page_load = function (wrapper) {
 									invoice_name: this.frm.doc.name
 								}
 							})
-
 							frappe.call({
 								method: "inn.inn_hotels.page.pos_extended.pos_extended.transfer_to_folio",
 								args: {
 									invoice_doc: this.frm.doc,
-									folio_name: folio_id
+									folio_name: folio_id,
+									pos_profile_name: frm_doc.pos_profile
+
 								},
 								async: false,
 							})
-
 							frappe.show_alert({
 								indicator: 'green',
 								message: __('POS invoice {0} created succesfully', [r.doc.name])
 							});
+							this.order_summary.load_summary_of(this.frm.doc, true);
 						}),
 					() => frappe.dom.unfreeze()
 				])
@@ -622,7 +622,6 @@ frappe.pages['pos-extended'].on_page_load = function (wrapper) {
 					}
 
 				} catch (error) {
-					console.log(error);
 				} finally {
 					frappe.dom.unfreeze();
 					return item_row; // eslint-disable-line no-unsafe-finally

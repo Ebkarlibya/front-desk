@@ -134,7 +134,6 @@ def save_pos_usage(invoice_name, action, table=None):
                 add_item = False
 
     elif action in ["print_table", "save_submit"]:
-        # no change. print table will use same data as print_captain
         doc.save()
 
     return {"message": "success"}
@@ -168,7 +167,7 @@ def clean_table_number(invoice_name):
 
 
 @frappe.whitelist()
-def transfer_to_folio(invoice_doc, folio_name):
+def transfer_to_folio(invoice_doc,pos_profile_name, folio_name): 
     invoice_doc = json.loads(invoice_doc)
     if not frappe.db.exists(
         {"doctype": "Inn POS Usage", "pos_invoice": invoice_doc["name"]}
@@ -273,6 +272,8 @@ def transfer_to_folio(invoice_doc, folio_name):
     ftb_doc.save()
 
     remove_pos_invoice_bill(invoice_doc["name"], folio_name)
+    se_items_list = prepare_se_items_from_invoice(invoice_doc)       
+    create_material_issue_from_pos(pos_profile_name, se_items_list, folio_name)
 
 @frappe.whitelist()
 def get_past_order_list_with_table(search_term=None, status=None):
@@ -400,14 +401,11 @@ def remove_pos_invoice_bill(invoice_name: str, folio_name: str):
 def transfer_charge_to_customer(cart_data_str, paying_customer,pos_profile_name, original_customer=None):
     try:
         cart_data = json.loads(cart_data_str)
-        items_to_issue = cart_data.get("items", [])
         invoice = frappe._dict(cart_data_str) if isinstance(cart_data_str, dict) else json.loads(cart_data_str)
         invoice_name = invoice.get("name")
         grand_total = flt(invoice.get("grand_total"))
         company = invoice.get("company")
         posting_date = get_datetime(invoice.get("posting_date")).date()
-        if not all([len(items_to_issue) > 0, grand_total > 0, company, paying_customer, pos_profile_name]):
-            frappe.throw(_("Missing required data for customer charge transfer."))
         if not all([invoice_name, grand_total > 0, company, paying_customer]):
             frappe.throw(_("Missing required data: Invoice Name, Grand Total, Company, or Paying Customer."))
 
@@ -454,18 +452,7 @@ def transfer_charge_to_customer(cart_data_str, paying_customer,pos_profile_name,
 
         je.flags.ignore_mandatory = True
         je.submit()
-        
-        items_to_issue = cart_data.get("items", [])
-        se_items_list = []
-        for cart_item in items_to_issue:
-            se_items_list.append({
-                "item_code": cart_item.get("item_code"),
-                "qty": cart_item.get("qty"),
-                "uom": cart_item.get("uom"),
-                "stock_uom": cart_item.get("stock_uom"),
-                "conversion_factor": cart_item.get("conversion_factor"),
-                "basic_rate": cart_item.get("rate"),
-            })
+        se_items_list = prepare_se_items_from_invoice(cart_data)
         create_material_issue_from_pos(pos_profile_name, se_items_list)
         return {
             "status": "success",
@@ -485,6 +472,7 @@ def create_material_issue_from_pos(pos_profile_name, items_list,folio_name=None)
     items list. It fetches the warehouse from the POS Profile and issues only
     stockable items, using all provided item details like UOM and rate.
     """
+    print("*-"*50)
     ignored_items = []
     stock_items_to_add = []
 
@@ -558,3 +546,37 @@ def create_material_issue_from_pos(pos_profile_name, items_list,folio_name=None)
             "doc_name": None,
             "ignored_items": ignored_items
         }
+        
+def prepare_se_items_from_invoice(invoice_doc_json: str) -> list:
+    """
+    تقوم هذه الدالة بمعالجة بيانات الفاتورة بصيغة JSON،
+    وتستخرج قائمة العناصر وتعيد تنسيقها للصيغة المطلوبة.
+
+    Args:
+        invoice_doc_json (str): بيانات الفاتورة على شكل نص JSON.
+
+    Returns:
+        list: قائمة من القواميس (dictionaries) تحتوي على بيانات العناصر المهيأة.
+              تعيد قائمة فارغة إذا لم يتم العثور على عناصر أو في حال حدوث خطأ.
+    """
+    try:
+        items_to_issue = invoice_doc_json.get("items", [])
+        if not items_to_issue:
+            return []
+        se_items_list = []
+        for cart_item in items_to_issue:
+            se_items_list.append({
+                "item_code": cart_item.get("item_code"),
+                "qty": cart_item.get("qty"),
+                "uom": cart_item.get("uom"),
+                "stock_uom": cart_item.get("stock_uom"),
+                "conversion_factor": cart_item.get("conversion_factor"),
+                "basic_rate": cart_item.get("rate"),
+            })   
+        return se_items_list
+
+    except json.JSONDecodeError:
+        return []
+    except Exception as e:
+        return []
+        
