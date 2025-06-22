@@ -1,0 +1,150 @@
+{
+ "actions": [],
+ "allow_rename": 1,
+ "autoname": "format:ER-{####}",
+ "creation": "2025-06-22 21:39:00.013122",
+ "doctype": "DocType",
+ "engine": "InnoDB",
+ "field_order": [
+  "section_filters",
+  "amended_from",
+  "customer_filter",
+  "column_break_jvov",
+  "date_start_filter",
+  "column_break_zais",
+  "date_end_filter",
+  "section_populate",
+  "populate_button",
+  "reservations_to_extend",
+  "section_bulk_update",
+  "new_customer",
+  "column_break_yppi",
+  "new_date_start",
+  "column_break_dcpy",
+  "new_date_end"
+ ],
+ "fields": [
+  {
+   "fieldname": "amended_from",
+   "fieldtype": "Link",
+   "label": "Amended From",
+   "no_copy": 1,
+   "options": "Extend Reservation",
+   "print_hide": 1,
+   "read_only": 1,
+   "search_index": 1
+  },
+  {
+   "fieldname": "column_break_jvov",
+   "fieldtype": "Column Break"
+  },
+  {
+   "fieldname": "section_filters",
+   "fieldtype": "Section Break",
+   "label": "Reservation Filters"
+  },
+  {
+   "description": "Filter reservations by a specific Customer",
+   "fieldname": "customer_filter",
+   "fieldtype": "Link",
+   "label": "Customer",
+   "options": "Customer"
+  },
+  {
+   "description": "Filter reservations with Check-in Date equal or after this date",
+   "fieldname": "date_start_filter",
+   "fieldtype": "Date",
+   "label": "Check-in Date From"
+  },
+  {
+   "description": "Filter reservations with Check-in Date equal or before this date",
+   "fieldname": "date_end_filter",
+   "fieldtype": "Date",
+   "label": "Check-in Date To"
+  },
+  {
+   "fieldname": "section_populate",
+   "fieldtype": "Section Break",
+   "label": "Populate Reservations"
+  },
+  {
+   "description": "Click to fetch reservations based on the filters above",
+   "fieldname": "populate_button",
+   "fieldtype": "Button",
+   "label": "Populate Reservations",
+   "options": "populate_reservations"
+  },
+  {
+   "description": "List of reservations matching the filters",
+   "fieldname": "reservations_to_extend",
+   "fieldtype": "Table",
+   "label": "Reservations to Extend",
+   "options": "Extend Reservation Item"
+  },
+  {
+   "fieldname": "section_bulk_update",
+   "fieldtype": "Section Break",
+   "label": "Bulk Update Reservation Details"
+  },
+  {
+   "description": "Set a new customer for selected reservations in the table",
+   "fieldname": "new_customer",
+   "fieldtype": "Link",
+   "label": "New Customer (Apply to Selected)",
+   "options": "Customer"
+  },
+  {
+   "fieldname": "column_break_yppi",
+   "fieldtype": "Column Break"
+  },
+  {
+   "description": "Set a new Check-in Date for selected reservations in the table",
+   "fieldname": "new_date_start",
+   "fieldtype": "Date",
+   "label": "New Check-in Date (Apply to Selected)"
+  },
+  {
+   "fieldname": "column_break_dcpy",
+   "fieldtype": "Column Break"
+  },
+  {
+   "description": "Set a new Check-out Date for selected reservations in the table",
+   "fieldname": "new_date_end",
+   "fieldtype": "Date",
+   "label": "New Check-out Date (Apply to Selected)"
+  },
+  {
+   "fieldname": "column_break_zais",
+   "fieldtype": "Column Break"
+  }
+ ],
+ "grid_page_length": 50,
+ "index_web_pages_for_search": 1,
+ "is_submittable": 1,
+ "links": [],
+ "modified": "2025-06-22 22:06:13.898335",
+ "modified_by": "Administrator",
+ "module": "Inn Hotels",
+ "name": "Extend Reservation",
+ "naming_rule": "Expression",
+ "owner": "Administrator",
+ "permissions": [
+  {
+   "create": 1,
+   "delete": 1,
+   "email": 1,
+   "export": 1,
+   "print": 1,
+   "read": 1,
+   "report": 1,
+   "role": "System Manager",
+   "share": 1,
+   "submit": 1,
+   "write": 1
+  }
+ ],
+ "row_format": "Dynamic",
+ "sort_field": "modified",
+ "sort_order": "DESC",
+ "states": []
+}
