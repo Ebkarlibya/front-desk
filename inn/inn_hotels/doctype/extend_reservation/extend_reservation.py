@@ -22,12 +22,12 @@ class ExtendReservation(Document):
         if not self.reservations_to_extend:
             frappe.throw(_("No reservations found in the table to process."))
 
-        items_to_check = [] 
+        items_to_check = []
 
         for item in self.reservations_to_extend:
             # Basic validation for required fields in each row
-            if not item.room or not item.new_check_in or not item.new_check_out:
-                frappe.throw(_("Room, New Check-in Date, and New Check-out Date are required for all reservations in the table."))
+            if not item.new_room or not item.new_room_price  or not item.new_check_in or not item.new_check_out:
+                frappe.throw(_("Room,Room Price,New Check-in Date, and New Check-out Date are required for all reservations in the table."))
 
             new_check_in_date = getdate(item.new_check_in)
             new_check_out_date = getdate(item.new_check_out)
@@ -42,7 +42,7 @@ class ExtendReservation(Document):
             # For simplicity, if it's a "new reservation" based on changed data, we treat it as a fresh booking.
             
             items_to_check.append({
-                "room_id": item.room,
+                "room_id": item.new_room,
                 "new_check_in": new_check_in_date,
                 "new_check_out": new_check_out_date,
                 "original_reservation_name": item.reservation 
@@ -111,7 +111,7 @@ class ExtendReservation(Document):
             new_reservation = frappe.new_doc("Inn Reservation")
 
             # Copy essential fields from the original reservation or from the Extend Reservation Item
-            new_reservation.customer_id = item.customer 
+            new_reservation.customer_id = item.customer
             new_reservation.type = original_reservation.type
             new_reservation.group_id = original_reservation.group_id
             new_reservation.channel = original_reservation.channel
@@ -122,19 +122,19 @@ class ExtendReservation(Document):
 
             new_reservation.room_type = original_reservation.room_type
             new_reservation.bed_type = original_reservation.bed_type
-            new_reservation.room_id = original_reservation.room_id # Reserved Room
-            new_reservation.actual_room_id = item.room # Actual Room (from table)
+            new_reservation.room_id = original_reservation.room_id
+            new_reservation.actual_room_id = item.new_room
             
             new_reservation.room_rate = original_reservation.room_rate
             new_reservation.base_room_rate = original_reservation.base_room_rate
             new_reservation.init_actual_room_rate = original_reservation.init_actual_room_rate
-            new_reservation.actual_room_rate = item.room_price # Room price from table
+            new_reservation.actual_room_rate = item.new_room_price
             new_reservation.discount = original_reservation.discount
 
             new_reservation.adult = original_reservation.adult
             new_reservation.child = original_reservation.child
             new_reservation.extra_bed = original_reservation.extra_bed
-            new_reservation.guest_name = original_reservation.guest_name 
+            new_reservation.guest_name = original_reservation.guest_name
 
             new_reservation.actual_room_rate_tax = original_reservation.actual_room_rate_tax
             new_reservation.actual_breakfast_rate_tax = original_reservation.actual_breakfast_rate_tax
@@ -147,35 +147,35 @@ class ExtendReservation(Document):
 
             try:
                 new_reservation.insert(ignore_permissions=True) 
-                new_reservation.submit() 
+                new_reservation.submit()
                 newly_created_reservations.append(new_reservation.name)
 
                 # Create corresponding Inn Room Booking entry for the NEW reservation
                 new_room_booking = frappe.new_doc("Inn Room Booking")
-                new_room_booking.room_id = item.room
-                new_room_booking.start = new_reservation.expected_arrival # Use actual reservation dates
-                new_room_booking.end = new_reservation.expected_departure # Use actual reservation dates
-                new_room_booking.status = "Booked" # Mark as booked (or Stayed if already In House)
+                new_room_booking.room_id = item.new_room
+                new_room_booking.start = new_reservation.expected_arrival
+                new_room_booking.end = new_reservation.expected_departure
+                new_room_booking.status = "Booked"
                 new_room_booking.room_availability = "Room Sold" 
                 new_room_booking.reference_type = "Inn Reservation"
                 new_room_booking.reference_name = new_reservation.name
                 new_room_booking.note = _("Booking for new reservation {0} (Extended from {1})").format(new_reservation.name, item.reservation)
                 new_room_booking.insert(ignore_permissions=True)
-                new_room_booking.submit() # Submit the room booking
-
+                new_room_booking.submit()
                 # Link the newly created reservation back to the Extend Reservation Item row
                 frappe.db.set_value("Extend Reservation Item", item.name, "new_reservation_id", new_reservation.name)
                 
-                msgprint(_("New Reservation {0} and Room Booking created for original Reservation {1}.").format(new_reservation.name, item.reservation), indicator='green')
+                # msgprint(_("New Reservation {0} and Room Booking created for original Reservation {1}.").format(new_reservation.name, item.reservation), indicator='green')
 
             except ValidationError as e:
-                msgprint(_("Failed to create new reservation for original {0} due to validation error: {1}").format(item.reservation, e.message), indicator='red')
+                return
+                # msgprint(_("Failed to create new reservation for original {0} due to validation error: {1}").format(item.reservation, e.message), indicator='red')
             except Exception as e:
                 msgprint(_("An unexpected error occurred while creating new reservation for original {0}: {1}").format(item.reservation, str(e)), indicator='red')
                 frappe.log_error(f"Error creating new reservation for {item.reservation}", str(e))
 
         # After attempting to create all reservations, reload the current DocType to show updated links
-        if newly_created_reservations: # Only reload if at least one reservation was created
+        if newly_created_reservations:
             self.reload()
 
 
@@ -205,12 +205,12 @@ def populate_reservations_for_extension(customer_filter=None, date_start_filter=
         "Inn Reservation",
         filters=filters,
         fields=[
-            "name",              # Reservation ID
-            "expected_arrival",  # Original Check-in Date
-            "expected_departure",# Original Check-out Date
-            "customer_id",       # Customer ID
-            "actual_room_id",    # Room ID
-            "actual_room_rate",  # Room Price
+            "name",
+            "expected_arrival",
+            "expected_departure",
+            "customer_id",
+            "actual_room_id",
+            "actual_room_rate",
             "room_type", "bed_type", "channel", "room_rate", "base_room_rate",
             "init_actual_room_rate", "discount", "adult", "child",
             "extra_bed", "actual_room_rate_tax", "actual_breakfast_rate_tax",
@@ -223,7 +223,7 @@ def populate_reservations_for_extension(customer_filter=None, date_start_filter=
         for res in reservations:
             # Calculate default new_check_in and new_check_out
             default_new_check_in = add_days(res.expected_departure, 1)
-            default_new_check_out = add_days(default_new_check_in, 1) # New Check-out is one day after New Check-in
+            default_new_check_out = add_days(default_new_check_in, 1)
 
             result_list.append({
                 "reservation": res.name,
@@ -231,9 +231,11 @@ def populate_reservations_for_extension(customer_filter=None, date_start_filter=
                 "original_check_out": res.expected_departure,
                 "customer": res.customer_id, 
                 "room": res.actual_room_id,
+                "new_room": res.actual_room_id,
                 "room_price": res.actual_room_rate,
-                "new_check_in": default_new_check_in,  # New default calculation
-                "new_check_out": default_new_check_out, # New default calculation
+                "new_room_price": res.actual_room_rate,
+                "new_check_in": default_new_check_in,
+                "new_check_out": default_new_check_out,
             })
     
     if not result_list:

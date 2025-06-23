@@ -1,21 +1,11 @@
 frappe.ui.form.on('Extend Reservation', {
     onload: function(frm) {
         // Set properties for child table
-        frm.get_field('reservations_to_extend').grid.cannot_add_rows = true; // Prevent adding rows manually
-        frm.get_field('reservations_to_extend').grid.only_sortable(); // Allow sorting but not adding/deleting
+        // frm.get_field('reservations_to_extend').grid.cannot_add_rows = true; // Prevent adding rows manually
+        // frm.get_field('reservations_to_extend').grid.only_sortable(); // Allow sorting but not adding/deleting
 
         // Ensure fields in Section 3 are initially disabled if no rows are populated
         toggle_bulk_update_fields(frm);
-
-        // Add a custom button for "Submit" if the status is not already "Submitted"
-        if (frm.doc.docstatus === 0) { // DocStatus 0 means Draft
-             frm.add_custom_button(__('Submit Extensions'), () => {
-                frm.save('Submit'); // Trigger the submit action
-            }, __("Actions"));
-        } else if (frm.doc.docstatus === 1) { // DocStatus 1 means Submitted
-            frm.disable_save(); // Disable save for submitted docs
-            frm.set_read_only(); // Make all fields read-only
-        }
     },
 
     refresh: function(frm) {
@@ -24,9 +14,9 @@ frappe.ui.form.on('Extend Reservation', {
         
         // Hide/show submit button based on docstatus and if any rows are present
         if (frm.doc.docstatus === 0 && frm.doc.reservations_to_extend.length > 0) {
-            frm.toggle_enable_btn('Submit Extensions', true);
+            frm.toggle_enable_btn('Submit', true);
         } else {
-            frm.toggle_enable_btn('Submit Extensions', false);
+            frm.toggle_enable_btn('Submit', false);
         }
         
         // Hide/show Populate button based on docstatus
@@ -66,17 +56,19 @@ frappe.ui.form.on('Extend Reservation', {
                         item.original_check_out = d.original_check_out;
                         item.customer = d.customer;
                         item.room = d.room;
+                        item.new_room = d.new_room;
                         item.room_price = d.room_price;
+                        item.new_room_price = d.new_room_price;
                         item.new_check_in = d.new_check_in; 
                         item.new_check_out = d.new_check_out; 
                     });
                     frm.refresh_field('reservations_to_extend');
                     toggle_bulk_update_fields(frm); 
-                    frm.toggle_enable_btn('Submit Extensions', true); // Enable submit button after population
+                    frm.toggle_enable_btn('Submit Extensions', true);
                 } else {
                     frm.refresh_field('reservations_to_extend'); 
                     toggle_bulk_update_fields(frm); 
-                    frm.toggle_enable_btn('Submit Extensions', false); // Disable submit if no rows
+                    frm.toggle_enable_btn('Submit Extensions', false);
                 }
             }
         });
@@ -108,7 +100,7 @@ function update_table_fields(frm, field_to_update, new_value) {
             // followed by a refresh. Frappe's UI layer will then pick up this change.
             row[field_to_update] = new_value; 
         });
-        frm.refresh_field('reservations_to_extend'); // Refresh the entire child table grid to show changes
+        frm.refresh_field('reservations_to_extend');
     } else if (new_value === null || new_value === undefined || new_value === '') {
         // Handle cases where the main field is cleared,
         // you might want to clear the corresponding child fields too
