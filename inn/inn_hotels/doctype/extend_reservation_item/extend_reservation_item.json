@@ -1,0 +1,126 @@
+{
+ "actions": [],
+ "allow_rename": 1,
+ "creation": "2025-06-22 21:39:25.510521",
+ "doctype": "DocType",
+ "editable_grid": 1,
+ "engine": "InnoDB",
+ "field_order": [
+  "customer",
+  "room",
+  "column_break_quus",
+  "reservation",
+  "room_price",
+  "section_break_xgmq",
+  "column_break_wzmx",
+  "original_check_in",
+  "original_check_out",
+  "column_break_tkht",
+  "new_check_in",
+  "new_check_out",
+  "column_break_sscw",
+  "new_reservation_id"
+ ],
+ "fields": [
+  {
+   "bold": 1,
+   "fieldname": "reservation",
+   "fieldtype": "Link",
+   "in_list_view": 1,
+   "label": "Reservation",
+   "options": "Inn Reservation",
+   "read_only": 1
+  },
+  {
+   "fieldname": "customer",
+   "fieldtype": "Link",
+   "in_list_view": 1,
+   "label": "Customer",
+   "options": "Customer"
+  },
+  {
+   "fieldname": "column_break_quus",
+   "fieldtype": "Column Break"
+  },
+  {
+   "fieldname": "original_check_in",
+   "fieldtype": "Date",
+   "in_list_view": 1,
+   "label": "Original Check-in Date",
+   "read_only": 1
+  },
+  {
+   "fieldname": "original_check_out",
+   "fieldtype": "Date",
+   "in_list_view": 1,
+   "label": "Original Check-out Date",
+   "read_only": 1
+  },
+  {
+   "fieldname": "section_break_xgmq",
+   "fieldtype": "Section Break"
+  },
+  {
+   "fieldname": "room",
+   "fieldtype": "Link",
+   "in_list_view": 1,
+   "label": "Room",
+   "options": "Inn Room",
+   "read_only": 1
+  },
+  {
+   "fieldname": "column_break_sscw",
+   "fieldtype": "Column Break"
+  },
+  {
+   "fieldname": "room_price",
+   "fieldtype": "Currency",
+   "in_list_view": 1,
+   "label": "Room Price",
+   "read_only": 1
+  },
+  {
+   "fieldname": "column_break_wzmx",
+   "fieldtype": "Column Break"
+  },
+  {
+   "fieldname": "column_break_tkht",
+   "fieldtype": "Column Break",
+   "read_only": 1
+  },
+  {
+   "fieldname": "new_check_in",
+   "fieldtype": "Date",
+   "in_list_view": 1,
+   "label": "New Check-in Date"
+  },
+  {
+   "fieldname": "new_check_out",
+   "fieldtype": "Date",
+   "in_list_view": 1,
+   "label": "New Check-out Date"
+  },
+  {
+   "description": "Link to the newly created reservation",
+   "fieldname": "new_reservation_id",
+   "fieldtype": "Link",
+   "label": "New Reservation Created",
+   "options": "Inn Reservation",
+   "read_only": 1
+  }
+ ],
+ "grid_page_length": 50,
+ "index_web_pages_for_search": 1,
+ "istable": 1,
+ "links": [],
+ "modified": "2025-06-22 23:56:58.729571",
+ "modified_by": "Administrator",
+ "module": "Inn Hotels",
+ "name": "Extend Reservation Item",
+ "owner": "Administrator",
+ "permissions": [],
+ "row_format": "Dynamic",
+ "sort_field": "modified",
+ "sort_order": "DESC",
+ "states": []
+}
