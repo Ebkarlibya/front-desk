@@ -30,7 +30,18 @@ frappe.ui.form.on("POS Closing Entry", {
         frm.add_custom_button(__("Get Overhandle"), function () {
             get_overhandle(frm)
         }, "Overhandle")
-    }
+    },
+    after_save: function(frm) {
+        // هذا الحدث يتم تشغيله بعد حفظ (أو إرسال) المستند
+        // يمكن استخدامه لضمان أن التغييرات تنعكس بعد إغلاق الوردية
+        if (frm.doc.docstatus === 1 && frm.doc.status === "Submitted") {
+            frappe.msgprint(__('Inn App: Performing post-closure actions...'));
+            frappe.ui.toolbar.clear_cache();
+            frappe.set_route('pos-extended'); 
+
+        }
+    },
+
 })
 
 async function get_overhandle(frm) {
