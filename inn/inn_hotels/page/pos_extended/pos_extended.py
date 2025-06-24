@@ -472,7 +472,6 @@ def create_material_issue_from_pos(pos_profile_name, items_list,folio_name=None)
     items list. It fetches the warehouse from the POS Profile and issues only
     stockable items, using all provided item details like UOM and rate.
     """
-    print("*-"*50)
     ignored_items = []
     stock_items_to_add = []
 
@@ -513,9 +512,10 @@ def create_material_issue_from_pos(pos_profile_name, items_list,folio_name=None)
             }
 
         # الخطوة 3: إنشاء وإعتماد إدخال المخزون
+        stock_entry_type = frappe.db.get_value("Stock Entry Type", { "purpose": "Material Issue"}, "name")
         se = frappe.new_doc("Stock Entry")
         se.purpose = "Material Issue"
-        se.stock_entry_type = "Material Issue"
+        se.stock_entry_type = stock_entry_type
         se.set_posting_time = 1
         se.company = company
         se.custom_from_pos= 1
