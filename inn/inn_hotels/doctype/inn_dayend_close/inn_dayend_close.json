@@ -36,6 +36,7 @@
    "fieldtype": "Select",
    "in_list_view": 1,
    "label": "Status",
+   "no_copy": 1,
    "options": "Open\nClosed",
    "read_only": 1
   },
@@ -48,6 +49,7 @@
    "fieldtype": "Date",
    "in_list_view": 1,
    "label": "Audit Date",
+   "no_copy": 1,
    "read_only": 1,
    "set_only_once": 1
   },
@@ -86,7 +88,7 @@
   }
  ],
  "links": [],
- "modified": "2025-01-22 19:31:51.872837",
+ "modified": "2025-07-07 21:04:14.985155",
  "modified_by": "Administrator",
  "module": "Inn Hotels",
  "name": "Inn Dayend Close",
@@ -150,6 +152,7 @@
    "write": 1
   }
  ],
+ "row_format": "Dynamic",
  "sort_field": "modified",
  "sort_order": "DESC",
  "states": [],
