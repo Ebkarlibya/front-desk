@@ -1,5 +1,6 @@
 {
  "actions": [],
+ "allow_copy": 1,
  "autoname": "naming_series:",
  "creation": "2020-04-17 14:56:28.454861",
  "doctype": "DocType",
@@ -62,6 +63,7 @@
    "fieldname": "arrived_today",
    "fieldtype": "Table",
    "label": "Expected Arrived Today",
+   "no_copy": 1,
    "options": "Inn Expected Arrived Today"
   },
   {
@@ -73,6 +75,7 @@
    "fieldname": "departed_today",
    "fieldtype": "Table",
    "label": "Expected Departed Today",
+   "no_copy": 1,
    "options": "Inn Expected Departed Today"
   },
   {
@@ -84,11 +87,12 @@
    "fieldname": "closed_today",
    "fieldtype": "Table",
    "label": "Expected Closed Today",
+   "no_copy": 1,
    "options": "Inn Expected Closed Today"
   }
  ],
  "links": [],
- "modified": "2025-07-07 21:04:14.985155",
+ "modified": "2025-07-07 21:51:33.686775",
  "modified_by": "Administrator",
  "module": "Inn Hotels",
  "name": "Inn Dayend Close",
