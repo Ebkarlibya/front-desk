@@ -36,6 +36,18 @@ def get_column(start_date: datetime, date_length: datetime):
             "fieldtype": "Data",
             "width": 150,
         },
+        {
+            "fieldname": "bed_type",
+            "label": _("Bed Type"),
+            "fieldtype": "Data",
+            "width": 150,
+        },
+        {
+            "fieldname": "room_rate",
+            "label": _("Room Rate"),
+            "fieldtype": "Data",
+            "width": 150,
+        },
     ]
 
     for day in range(date_length + 1):
@@ -77,10 +89,13 @@ def get_data(filters):
         SELECT 
             r.name AS room_id, 
             r.room_type, 
+            r.bed_type,
             rb.start, 
             rb.end, 
-            rb.room_availability
+            rb.room_availability,
+            irr.final_total_rate_amount as room_rate
         FROM `tabInn Room` r
+        INNER JOIN `tabInn Room Rate` irr ON r.room_type = irr.room_type
         LEFT JOIN `tabInn Room Booking` rb 
             ON rb.room_id = r.name 
             AND rb.start >= {frappe.db.escape(filters.start_date)}
@@ -101,7 +116,12 @@ def get_data(filters):
         room_id = row.room_id
 
         if room_id not in result:
-            result[room_id] = {"room_id": room_id, "room_type": row.room_type}
+            result[room_id] = {
+                "room_id": room_id,
+                "room_type": row.room_type,
+                "room_rate": row.room_rate,
+                "bed_type": row.bed_type,
+            }
             for date in daterange(start_date, end_date + timedelta(days=1)):
                 date_str = date.strftime(FORMAT_DATE)
                 result[room_id][date_str] = "AV"  # Default to Available

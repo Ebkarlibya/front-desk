@@ -51,7 +51,8 @@ frappe.query_reports["Room Occupation"] = {
       fieldname: "room_status",
       label: __("Room Status"),
       fieldtype: "Select",
-      options: " \nVacant Ready\nVacant Clean\nVacant Dirty\nOccupied Clean\nOccupied Dirty\nOut of Order",
+      options:
+        " \nVacant Ready\nVacant Clean\nVacant Dirty\nOccupied Clean\nOccupied Dirty\nOut of Order",
     },
   ],
 
@@ -67,15 +68,23 @@ frappe.query_reports["Room Occupation"] = {
       case "room_id":
         iconHTML = `<i class="fa fa-bed" style="margin-right: 5px;"></i>`;
         break;
+      case "bed_type":
+        iconHTML = `<i class="fa fa-bed" style="margin-right: 5px;"></i>`;
+        break;
+      case "room_rate":
+        iconHTML = `<i class="fa fa-money" style="margin-right: 5px;"></i>`;
+        break;
       default:
         color = STATUS[value];
         iconHTML = `<i class="fa fa-user" style="margin-right: 5px;"></i>`;
-        v = `<span style="color: white;">${iconHTML} ${value !== "" ? __(value) : "N/A"
-          }</span>`;
+        v = `<span style="color: white;">${iconHTML} ${
+          value !== "" ? __(value) : "N/A"
+        }</span>`;
         return `<p style='margin:0px;padding-left:5px;background-color:${color}!important;'>${v}</p>`;
     }
-    return `<span style="color: ${color};">${iconHTML} ${value !== "" ? __(value) : "N/A"
-      }</span>`;
+    return `<span style="color: ${color};">${iconHTML} ${
+      value !== "" ? __(value) : "N/A"
+    }</span>`;
   },
 };
 

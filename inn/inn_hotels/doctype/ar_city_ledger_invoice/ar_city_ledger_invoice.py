@@ -62,8 +62,8 @@ def make_payment(id):
         doc_jea_debit.account = payment.account
         doc_jea_debit.debit = payment.payment_amount
         doc_jea_debit.debit_in_account_currency = payment.payment_amount
-        doc_jea_debit.party_type = "Customer"
-        doc_jea_debit.party = doc.customer_id
+        # doc_jea_debit.party_type = "Customer"
+        # doc_jea_debit.party = doc.customer_id
         doc_jea_debit.user_remark = remark
 
         doc_jea_credit = frappe.new_doc("Journal Entry Account")

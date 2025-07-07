@@ -11,7 +11,11 @@ from frappe.model.document import Document
 
 
 class InnFolio(Document):
-    pass
+    def validate(self):
+        for trx in self.folio_transaction:
+            if trx.is_void == 0 and trx.amount <= 0:
+
+                frappe.throw("Amount must be greater than 0 for non-void transaction.")
 
 
 @frappe.whitelist()
