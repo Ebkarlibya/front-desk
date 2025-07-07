@@ -15,6 +15,40 @@ frappe.ui.form.on("Inn Reservation", {
       handle_filter_on_start_if_filled(frm);
       check_is_room_booking_already_created(frm);
     }
+    // Fetch Inn Hotels Setting to control field editability
+    frappe.db.get_doc('Inn Hotels Setting', 'Inn Hotels Setting')
+        .then(doc => {
+            // Get the setting values
+            const allowEditInitialRate = doc.allow_edit_initial_room_rate_in_reservation;
+            const allowEditDiscount = doc.allow_edit_discount_in_reservation;
+
+            // Apply read_only property based on settings
+            // If setting is unchecked (0), then make the field read-only (true)
+            // If setting is checked (1), then allow editing (false)
+            frm.set_df_property('init_actual_room_rate', 'read_only', !allowEditInitialRate);
+            frm.set_df_property('discount', 'read_only', !allowEditDiscount);
+
+            // Optional: If not allowed to edit discount, you might want to force it to 0 if not
+            // if (!allowEditDiscount && frm.doc.discount !== 0) {
+            //     frm.set_value('discount', 0);
+            //     frm.refresh_field('discount');
+            // }
+        })
+        .catch(error => {
+            console.error("Error fetching Inn Hotels Setting:", error);
+            // In case of error fetching settings, default to allowing edits
+            frm.set_df_property('init_actual_room_rate', 'read_only', false);
+            frm.set_df_property('discount', 'read_only', false);
+            frappe.msgprint(__('Could not load Hotel Settings. Defaulting to editable fields.'));
+        });
+
+  },
+  base_room_rate: function(frm) {
+    if (frm.doc.base_room_rate) {
+      frm.set_value('init_actual_room_rate', frm.doc.base_room_rate);
+    } else {
+        frm.set_value('init_actual_room_rate', 0); 
+    }
   },
   refresh: function (frm) {
     is_check_in = getUrlVars()["is_check_in"];
@@ -628,7 +662,7 @@ frappe.ui.form.on("Inn Reservation", {
     }
     manage_filters("actual_room_id", phase, start_date);
   },
-  room_rate: function (frm) {
+  room_rate: function(frm) {
     if (frm.doc.room_rate == undefined || frm.doc.room_rate == "") {
       return;
     }
