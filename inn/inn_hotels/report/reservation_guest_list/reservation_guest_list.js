@@ -1,20 +1,4 @@
-frappe.require("assets/frappe/css/frappe-theme.css", () => {
-	const style = document.createElement("style");
-	style.innerHTML = `
-		.tree-toggle {
-			display: inline-block;
-			margin-right: 6px;
-			transition: transform 0.3s ease;
-		}
-		.tree-toggle.expanded {
-			transform: rotate(90deg);
-		}
-		.tree-toggle.collapsed {
-			transform: rotate(0deg);
-		}
-	`;
-	document.head.appendChild(style);
-});
+
 frappe.query_reports["Reservation Guest List"] = {
 	"filters": [
 		{
@@ -74,7 +58,7 @@ frappe.query_reports["Reservation Guest List"] = {
 
 	// تلوين الصف الأب والابن
 	if (data.is_group) {
-		value = `<span style="background: #5cb85c; color: #fff; padding: 3px 5px; border-radius: 3px;">${value}</span>`;
+		value = `<span style="padding: 3px 5px; border-radius: 3px;">${value}</span>`;
 	} else if (data.indent) {
 		value = `<span style="background: #d9edf7; color: #000; padding: 3px 5px; border-radius: 3px;">${value}</span>`;
 	}
