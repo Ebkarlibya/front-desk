@@ -66,10 +66,28 @@ def get_data(filters):
         # تحميل مستند الحجز للحصول على بيانات جدول الضيوف المرافقين
         doc = frappe.get_doc("Inn Reservation", res.name)
         
+        existing_accompanying_guest_names = []
+        if doc.accompanying_guests:
+            existing_accompanying_guest_names = [guest.companions_name for guest in doc.accompanying_guests]
+
+        if res.guest_name and res.guest_name not in existing_accompanying_guest_names:
+            main_guest_row = {
+                "room": "",
+                "reservation": "",
+                "customer": "",
+                "status": "",
+                "type": "",
+                "expected_arrival": "",
+                "expected_departure": "",
+                "guest_name": res.guest_name,
+                "passport_number": "",
+                "nationality": "",
+                "indent": 1
+            }
+            data.append(main_guest_row)
         if doc.accompanying_guests and len(doc.accompanying_guests) > 0:
-            # لكل ضيف مرافق يتم إنشاء صف تابع (Child row)
             for guest in doc.accompanying_guests:
-                child_row = {
+                child_row_accompanying = {
                     "room": "",
                     "reservation": "",
                     "customer": "",
@@ -82,22 +100,5 @@ def get_data(filters):
                     "nationality": guest.nationality,
                     "indent": 1  # علامة الصف الفرعي
                 }
-                data.append(child_row)
-        else:
-            # في حال عدم وجود سجلات لضيوف مرافقين، يمكن عرض صف فرعي واحد باستخدام قيمة guest_name الأساسية
-            child_row = {
-                "room": "",
-                "reservation": "",
-                "customer": "",
-                "status": "",
-                "type": "",
-                "expected_arrival": "",
-                "expected_departure": "",
-                "guest_name": res.guest_name,
-                "passport_number": "",
-                "nationality": "",
-                "indent": 1 
-            }
-            data.append(child_row)
-            
+                data.append(child_row_accompanying)
     return data

@@ -118,7 +118,12 @@
   "column_break_dynj",
   "booking_approver",
   "restaurant_user",
-  "restaurant_supervisor"
+  "restaurant_supervisor",
+  "reservation_controls_tab",
+  "reservation_edit_controls_section",
+  "allow_edit_initial_room_rate_in_reservation",
+  "column_break_ivdn",
+  "allow_edit_discount_in_reservation"
  ],
  "fields": [
   {
@@ -783,11 +788,39 @@
    "fieldtype": "Link",
    "label": "Customer Charge Account",
    "options": "Account"
+  },
+  {
+   "fieldname": "reservation_controls_tab",
+   "fieldtype": "Tab Break",
+   "label": "Reservation Controls"
+  },
+  {
+   "fieldname": "reservation_edit_controls_section",
+   "fieldtype": "Section Break",
+   "label": "Reservation Edit Controls"
+  },
+  {
+   "default": "0",
+   "description": "If unchecked, 'Initial Actual Room Rate' in Inn Reservation will be read-only.",
+   "fieldname": "allow_edit_initial_room_rate_in_reservation",
+   "fieldtype": "Check",
+   "label": "Allow Edit 'Initial Actual Room Rate' in Reservation"
+  },
+  {
+   "fieldname": "column_break_ivdn",
+   "fieldtype": "Column Break"
+  },
+  {
+   "default": "0",
+   "description": "If unchecked, 'Discount' in Inn Reservation will be read-only.",
+   "fieldname": "allow_edit_discount_in_reservation",
+   "fieldtype": "Check",
+   "label": "Allow Edit 'Discount' in Reservation"
   }
  ],
  "issingle": 1,
  "links": [],
- "modified": "2025-06-23 10:14:29.662957",
+ "modified": "2025-07-07 20:49:00.370678",
  "modified_by": "Administrator",
  "module": "Inn Hotels",
  "name": "Inn Hotels Setting",

@@ -37,7 +37,7 @@ class InnReservation(Document):
                 "Number of accompanying guests ({0}) cannot exceed total children and adults ({1})"
             ).format(accompanying_count, total_guests)
             frappe.throw(error_message)
-        if not self.guest_name:
+        if not self.guest_name and len(self.accompanying_guests) > 0:
             self.guest_name = self.accompanying_guests[0].companions_name
 
 
