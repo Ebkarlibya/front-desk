@@ -11,11 +11,17 @@ from frappe.model.document import Document
 
 
 class InnFolio(Document):
-    def validate(self):
-        for trx in self.folio_transaction:
-            if trx.is_void == 0 and trx.amount <= 0:
+    pass
+    # def validate(self):
+    #     settings = frappe.get_single("Inn Hotels Setting")
+    #     for trx in self.folio_transaction:
+    #         if (
+    #             trx.is_void == 0
+    #             and trx.amount <= 0
+    #             and not settings.allow_negative_transaction_value
+    #         ):
 
-                frappe.throw("Amount must be greater than 0 for non-void transaction.")
+    #             frappe.throw("Amount must be greater than 0 for non-void transaction.")
 
 
 @frappe.whitelist()

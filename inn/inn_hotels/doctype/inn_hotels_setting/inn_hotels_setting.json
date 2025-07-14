@@ -123,7 +123,9 @@
   "reservation_edit_controls_section",
   "allow_edit_initial_room_rate_in_reservation",
   "column_break_ivdn",
-  "allow_edit_discount_in_reservation"
+  "allow_edit_discount_in_reservation",
+  "folio_controls_section",
+  "allow_negative_transaction_value"
  ],
  "fields": [
   {
@@ -816,11 +818,23 @@
    "fieldname": "allow_edit_discount_in_reservation",
    "fieldtype": "Check",
    "label": "Allow Edit 'Discount' in Reservation"
+  },
+  {
+   "fieldname": "folio_controls_section",
+   "fieldtype": "Section Break",
+   "label": "Folio Controls"
+  },
+  {
+   "default": "0",
+   "description": "Once this is checked the payment in any folio will allow for negative entry.",
+   "fieldname": "allow_negative_transaction_value",
+   "fieldtype": "Check",
+   "label": "Allow Negative Transaction Value"
   }
  ],
  "issingle": 1,
  "links": [],
- "modified": "2025-07-07 20:49:00.370678",
+ "modified": "2025-07-14 11:04:42.478491",
  "modified_by": "Administrator",
  "module": "Inn Hotels",
  "name": "Inn Hotels Setting",
