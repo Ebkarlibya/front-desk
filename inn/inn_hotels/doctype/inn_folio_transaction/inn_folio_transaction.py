@@ -163,6 +163,12 @@ def add_package_charge(package_name, sub_folio, remark, parent):
 @frappe.whitelist()
 def add_charge(transaction_type, amount, sub_folio, remark, parent):
     # Create Inn Folio Transaction Bundle
+
+    settings = frappe.get_single("Inn Hotels Setting")
+    if float(amount) <= 0 and not settings.allow_negative_transaction_value:
+
+        frappe.throw("Amount must be greater than 0 for non-void transaction.")
+
     ftb_doc = frappe.new_doc("Inn Folio Transaction Bundle")
     ftb_doc.transaction_type = transaction_type
     ftb_doc.insert()
@@ -199,6 +205,11 @@ def add_charge(transaction_type, amount, sub_folio, remark, parent):
 @frappe.whitelist()
 def add_payment(transaction_type, amount, mode_of_payment, sub_folio, remark, parent):
     # Create Inn Folio Transaction Bundle
+    settings = frappe.get_single("Inn Hotels Setting")
+    if float(amount) <= 0 and not settings.allow_negative_transaction_value:
+
+        frappe.throw("Amount must be greater than 0 for non-void transaction.")
+
     ftb_doc = frappe.new_doc("Inn Folio Transaction Bundle")
     ftb_doc.transaction_type = transaction_type
     ftb_doc.insert()
