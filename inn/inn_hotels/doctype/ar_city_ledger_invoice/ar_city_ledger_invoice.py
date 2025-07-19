@@ -41,7 +41,7 @@ def make_payment(id):
     else:
         for folio in folio_list:
             arc_id.append(folio.ar_city_ledger_id)
-    payments = doc.get("payments")
+    payments = list(filter(lambda p: p.get("paid") == 0, doc.get("payments")))
     return_status = 1
 
     for payment in payments:
@@ -79,6 +79,17 @@ def make_payment(id):
 
         doc_je.save()
         doc_je.submit()
+        payment.paid = 1
+        frappe.db.set_value(
+            "AR City Ledger Invoice Payments",
+            payment.name,
+            "journal_entry_id",
+            doc_je.name,
+        )
+        frappe.db.commit()
+        frappe.db.set_value("AR City Ledger Invoice Payments", payment.name, "paid", 1)
+        frappe.db.commit()
+        # payment.journal_entry = doc_je.name
 
         if (
             frappe.db.get_value("Journal Entry", {"title": payment.name}, "remark")
@@ -86,7 +97,7 @@ def make_payment(id):
         ):
             return_status = 2
 
-        if return_status == 1:
+        if return_status == 1 and doc.total_paid == doc.total_amount:
             doc.status = "Paid"
             doc.save()
             for arc in arc_id:
@@ -95,3 +106,44 @@ def make_payment(id):
                 doc_arc_ledger.save()
 
     return return_status
+
+
+def cancel_ar_city_ledger_invoice(arci_id, jv_id):
+    """
+    Function to cancel AR City Ledger Invoice
+    """
+    try:
+        frappe.get_doc("AR City Ledger Invoice", arci_id)
+        arci = frappe.get_doc("AR City Ledger Invoice", arci_id)
+        if arci.status == "Cancelled":
+            frappe.throw(frappe._("AR City Ledger Invoice is already cancelled."))
+        if arci.status == "Paid":
+            frappe.throw(
+                frappe._(
+                    "Cannot cancel a paid AR City Ledger Invoice. Please reverse the payment first."
+                )
+            )
+        jv = frappe.get_doc("Journal Entry", jv_id)
+        jv.cancel()
+
+        return True
+    except:
+        return False
+
+
+def get_arci_details_print(folios):
+    folio_list = []
+    for folio in folios:
+        # folio_doc = frappe.get_doc("Inn Folio", folio["folio_id"])
+        transactions = frappe.db.get_all(
+            "Inn Folio Transaction",
+            filters={"parent": folio.folio_id},
+            fields=["name", "amount", "is_void", "transaction_type", "mode_of_payment"],
+        )
+        folio_list.append(
+            {
+                "folio_name": folio.folio_id,
+                "transactions": transactions,
+            }
+        )
+    return folio_list

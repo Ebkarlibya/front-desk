@@ -19,31 +19,37 @@ frappe.ui.form.on("AR City Ledger Invoice", {
   },
   make_payment: function (frm) {
     frappe.confirm(
-      
-        __("Please make sure that the payment details (") + "<b>" + __("Payment Date, Amount and Mode of Payment") + "</b>"+ __(") are correct, and ") + "<b>" + __("Outstanding Amount is zero") + "</b>" + (". Are you want to continue?")
-      ,
+      __("Please make sure that the payment details (") +
+        "<b>" +
+        __("Payment Date, Amount and Mode of Payment") +
+        "</b>" +
+        __(") are correct, and ") +
+        "<b>" +
+        __("Outstanding Amount is zero") +
+        "</b>" +
+        ". Are you want to continue?",
       function () {
-        if (frm.doc.outstanding != 0.0) {
-          frappe.msgprint(
-            __("Outstanding amount must be zero in order to Make Payment. Please correct the payment details before Making Payment.")
-        );
-        } else {
-          frappe.call({
-            method:
-              "inn.inn_hotels.doctype.ar_city_ledger_invoice.ar_city_ledger_invoice.make_payment",
-            args: {
-              id: frm.doc.name,
-            },
-            callback: (r) => {
-              if (r.message === 1) {
-                frappe.show_alert(
-                  __("This AR City Ledger Invoice are successfully paid.")
-                );
-                frm.reload_doc();
-              }
-            },
-          });
-        }
+        // if (frm.doc.outstanding != 0.0) {
+        //   frappe.msgprint(
+        //     __("Outstanding amount must be zero in order to Make Payment. Please correct the payment details before Making Payment.")
+        // );
+        // } else {
+        frappe.call({
+          method:
+            "inn.inn_hotels.doctype.ar_city_ledger_invoice.ar_city_ledger_invoice.make_payment",
+          args: {
+            id: frm.doc.name,
+          },
+          callback: (r) => {
+            if (r.message === 1) {
+              frappe.show_alert(
+                __("This AR City Ledger Invoice are successfully paid.")
+              );
+              frm.reload_doc();
+            }
+          },
+        });
+        // }
       }
     );
   },
@@ -77,6 +83,43 @@ frappe.ui.form.on("AR City Ledger Invoice Payments", {
       calculate_payments(frm);
     }
   },
+  // before_payments_remove: function (frm, cdt, cdn) {
+  //   let child = locals[cdt][cdn];
+  //   console.log(child);
+  //   if (child.paid === 1 && child.journal_entry_id) {
+  //     frappe.confirm(
+  //       __(
+  //         `This payment has been paid. and connected with a Journal entry ${child.journal_entry_id}. Are you sure you want to remove it? (Removing the entry will cause the journal entry to be cancelled as well)`
+  //       ),
+
+  //       function () {
+  //         // User confirmed, allow removal
+  //         frappe.call({
+  //           method: "cancel_ar_city_ledger_invoice",
+  //           args: {
+  //             jv_id: child.journal_entry_id,
+  //             arci_id: frm.doc.name,
+  //           },
+  //           freeze: true,
+  //           freeze_message: __("Removing Payment..."),
+  //           callback: function (r) {
+  //             if (r.message) {
+  //               frappe.show_alert(__("Payment removed successfully."));
+  //               frm.remove_child("payments", child);
+  //               frm.refresh_field("payments");
+  //               calculate_payments(frm);
+  //               frm.save();
+  //             }
+  //           },
+  //         });
+  //       },
+  //       function () {
+  //         // User cancelled, prevent removal
+  //         frappe.throw("Payment removal cancelled.");
+  //       }
+  //     );
+  //   }
+  // },
   mode_of_payment: function (frm, cdt, cdn) {
     let child = locals[cdt][cdn];
     if (child.mode_of_payment) {
