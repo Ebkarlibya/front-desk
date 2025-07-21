@@ -10,6 +10,7 @@
   "payment_reference_date",
   "mode_of_payment",
   "payment_amount",
+  "paid",
   "cb0",
   "payment_reference_no",
   "payment_clearance_date",
@@ -88,20 +89,29 @@
   {
    "fieldname": "journal_entry_id",
    "fieldtype": "Link",
+   "in_list_view": 1,
    "label": "Journal Entry ID",
    "options": "Journal Entry",
+   "read_only": 1
+  },
+  {
+   "default": "0",
+   "fieldname": "paid",
+   "fieldtype": "Check",
+   "label": "Paid",
    "read_only": 1
   }
  ],
  "istable": 1,
  "links": [],
- "modified": "2024-07-16 10:42:49.831153",
+ "modified": "2025-07-16 12:09:11.646435",
  "modified_by": "Administrator",
  "module": "Inn Hotels",
  "name": "AR City Ledger Invoice Payments",
  "naming_rule": "By \"Naming Series\" field",
  "owner": "Administrator",
  "permissions": [],
+ "row_format": "Dynamic",
  "sort_field": "modified",
  "sort_order": "DESC",
  "states": [],

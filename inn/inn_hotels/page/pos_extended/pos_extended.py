@@ -2,7 +2,7 @@ import frappe
 from inn.inn_hotels.doctype.inn_tax.inn_tax import calculate_inn_tax_and_charges
 import json
 from frappe import _
-from frappe.utils import flt, get_datetime 
+from frappe.utils import flt, get_datetime
 
 PRINT_STATUS_DRAFT = 0
 PRINT_STATUS_CAPTAIN = 1
@@ -151,6 +151,7 @@ def get_table_number(invoice_name):
         data["table_number"] = data["table"]
     return data
 
+
 @frappe.whitelist()
 def clean_table_number(invoice_name):
     table_name = frappe.get_last_doc(
@@ -167,7 +168,7 @@ def clean_table_number(invoice_name):
 
 
 @frappe.whitelist()
-def transfer_to_folio(invoice_doc,pos_profile_name, folio_name): 
+def transfer_to_folio(invoice_doc, pos_profile_name, folio_name):
     invoice_doc = json.loads(invoice_doc)
     if not frappe.db.exists(
         {"doctype": "Inn POS Usage", "pos_invoice": invoice_doc["name"]}
@@ -190,6 +191,9 @@ def transfer_to_folio(invoice_doc,pos_profile_name, folio_name):
         "fbs_tax_11": hotel_settings.fbs_tax_11,
         "round_off": hotel_settings.round_off,
     }
+    folio_transaction_type = frappe.db.get_value(
+        "POS Profile", invoice_doc["pos_profile"], "custom_inn_folio_transaction_type"
+    )
 
     # Create Inn Folio Transaction Bundle
     ftb_doc = frappe.new_doc("Inn Folio Transaction Bundle")
@@ -214,7 +218,11 @@ def transfer_to_folio(invoice_doc,pos_profile_name, folio_name):
         invoice_doc["name"],
         folio_name,
         invoice_doc["net_total"],
-        transaction_types["restaurant_food"],
+        (
+            folio_transaction_type
+            if folio_transaction_type
+            else transaction_types["restaurant_food"]
+        ),
         ftb_doc,
         food_remark,
         idx,
@@ -272,8 +280,9 @@ def transfer_to_folio(invoice_doc,pos_profile_name, folio_name):
     ftb_doc.save()
 
     remove_pos_invoice_bill(invoice_doc["name"], folio_name)
-    se_items_list = prepare_se_items_from_invoice(invoice_doc)       
+    se_items_list = prepare_se_items_from_invoice(invoice_doc)
     create_material_issue_from_pos(pos_profile_name, se_items_list, folio_name)
+
 
 @frappe.whitelist()
 def get_past_order_list_with_table(search_term=None, status=None):
@@ -286,7 +295,7 @@ def get_past_order_list_with_table(search_term=None, status=None):
         conditions_list.append("`tabPOS Invoice`.status = %(status)s")
         args["status"] = status
     else:
-         conditions_list.append("`tabPOS Invoice`.docstatus = 0")
+        conditions_list.append("`tabPOS Invoice`.docstatus = 0")
     if search_term:
         search_pattern = "%" + search_term + "%"
         args["search_pattern"] = search_pattern
@@ -298,7 +307,7 @@ def get_past_order_list_with_table(search_term=None, status=None):
                    FROM `tabInn POS Usage` ipu_filter
                    WHERE ipu_filter.pos_invoice = `tabPOS Invoice`.name
                    AND ipu_filter.`table` LIKE %(search_pattern)s
-               )"""
+               )""",
         ]
         conditions_list.append(f"({' OR '.join(search_conditions)})")
 
@@ -329,6 +338,7 @@ def get_past_order_list_with_table(search_term=None, status=None):
     invoices = frappe.db.sql(query, args, as_dict=1)
 
     return invoices
+
 
 def create_folio_trx(
     invoice_name,
@@ -396,77 +406,102 @@ def remove_pos_invoice_bill(invoice_name: str, folio_name: str):
         f"Transferred to {folio_name}",
     )
     frappe.db.set_value("POS Invoice", invoice_name, "status", "Consolidated")
-    
+
+
 @frappe.whitelist()
-def transfer_charge_to_customer(cart_data_str, paying_customer,pos_profile_name, original_customer=None):
+def transfer_charge_to_customer(
+    cart_data_str, paying_customer, pos_profile_name, original_customer=None
+):
     try:
         cart_data = json.loads(cart_data_str)
-        invoice = frappe._dict(cart_data_str) if isinstance(cart_data_str, dict) else json.loads(cart_data_str)
+        invoice = (
+            frappe._dict(cart_data_str)
+            if isinstance(cart_data_str, dict)
+            else json.loads(cart_data_str)
+        )
         invoice_name = invoice.get("name")
         grand_total = flt(invoice.get("grand_total"))
         company = invoice.get("company")
         posting_date = get_datetime(invoice.get("posting_date")).date()
         if not all([invoice_name, grand_total > 0, company, paying_customer]):
-            frappe.throw(_("Missing required data: Invoice Name, Grand Total, Company, or Paying Customer."))
+            frappe.throw(
+                _(
+                    "Missing required data: Invoice Name, Grand Total, Company, or Paying Customer."
+                )
+            )
 
         # 1. جلب حساب "Customer Charge Account" من الإعدادات
         customer_charge_settings_doctype = "Inn Hotels Setting"
         customer_charge_account_field = "customer_charge_account"
 
-        charge_transfer_account = frappe.db.get_single_value(customer_charge_settings_doctype, customer_charge_account_field)
+        charge_transfer_account = frappe.db.get_single_value(
+            customer_charge_settings_doctype, customer_charge_account_field
+        )
         if not charge_transfer_account:
-            frappe.throw(_("Customer Charge Transfer Account is not set in {0}.").format(customer_charge_settings_doctype))
+            frappe.throw(
+                _("Customer Charge Transfer Account is not set in {0}.").format(
+                    customer_charge_settings_doctype
+                )
+            )
 
         # 2. جلب الحساب المدين للعميل الدافع (Paying Customer)
         paying_customer_doc = frappe.get_doc("Customer", paying_customer)
         customer_receivable_account = paying_customer_doc.get("receivable_account")
         if not customer_receivable_account:
             # كحل بديل، جلب الحساب الافتراضي للذمم المدينة من الشركة
-            customer_receivable_account = frappe.get_cached_value('Company', company, 'default_receivable_account')
+            customer_receivable_account = frappe.get_cached_value(
+                "Company", company, "default_receivable_account"
+            )
             if not customer_receivable_account:
-                 frappe.throw(_("Receivable account for paying customer {0} not found, and no default set for company {1}.").format(paying_customer, company))
+                frappe.throw(
+                    _(
+                        "Receivable account for paying customer {0} not found, and no default set for company {1}."
+                    ).format(paying_customer, company)
+                )
 
-        # 3. إنشاء قيد يومية (Journal Entry)        
+        # 3. إنشاء قيد يومية (Journal Entry)
         je = frappe.new_doc("Journal Entry")
         je.voucher_type = "Journal Entry"
         je.posting_date = posting_date
         je.company = company
-        je.user_remark = _("Transfer of POS Invoice {0} charge (originally for {1}) to customer {2}.")\
-            .format(invoice_name, original_customer or _("Walk-in"), paying_customer)
+        je.user_remark = _(
+            "Transfer of POS Invoice {0} charge (originally for {1}) to customer {2}."
+        ).format(invoice_name, original_customer or _("Walk-in"), paying_customer)
 
-        # الطرف المدين: حساب العميل الدافع       
-        je.append("accounts", {
-            "account": customer_receivable_account,
-            "party_type": "Customer",
-            "party": paying_customer,
-            "debit_in_account_currency": grand_total,
-            "cost_center": invoice.get("cost_center") 
-        })
+        # الطرف المدين: حساب العميل الدافع
+        je.append(
+            "accounts",
+            {
+                "account": customer_receivable_account,
+                "party_type": "Customer",
+                "party": paying_customer,
+                "debit_in_account_currency": grand_total,
+                "cost_center": invoice.get("cost_center"),
+            },
+        )
 
-        # الطرف الدائن: حساب تحويل رسوم العملاء        
-        je.append("accounts", {
-            "account": charge_transfer_account,
-            "credit_in_account_currency": grand_total,
-            "cost_center": invoice.get("cost_center")
-        })
+        # الطرف الدائن: حساب تحويل رسوم العملاء
+        je.append(
+            "accounts",
+            {
+                "account": charge_transfer_account,
+                "credit_in_account_currency": grand_total,
+                "cost_center": invoice.get("cost_center"),
+            },
+        )
 
         je.flags.ignore_mandatory = True
         je.submit()
         se_items_list = prepare_se_items_from_invoice(cart_data)
         create_material_issue_from_pos(pos_profile_name, se_items_list)
-        return {
-            "status": "success",
-            "journal_entry": je.name
-        }
+        return {"status": "success", "journal_entry": je.name}
 
     except Exception as e:
         frappe.log_error(frappe.get_traceback(), "transfer_charge_to_customer Error")
-        return {
-            "status": "error",
-            "error": str(e)
-        }
-        
-def create_material_issue_from_pos(pos_profile_name, items_list,folio_name=None):
+        return {"status": "error", "error": str(e)}
+
+
+def create_material_issue_from_pos(pos_profile_name, items_list, folio_name=None):
     """
     Creates a Material Issue (Stock Entry) based on a POS Profile using a detailed
     items list. It fetches the warehouse from the POS Profile and issues only
@@ -478,28 +513,46 @@ def create_material_issue_from_pos(pos_profile_name, items_list,folio_name=None)
     try:
         # الخطوة 1: التحقق من ملف نقطة البيع واستخراج المخزن والشركة
         if not frappe.db.exists("POS Profile", pos_profile_name):
-            return {"status": "error", "message": _("POS Profile '{0}' not found.").format(pos_profile_name)}
+            return {
+                "status": "error",
+                "message": _("POS Profile '{0}' not found.").format(pos_profile_name),
+            }
 
-        pos_data = frappe.get_value("POS Profile", pos_profile_name, ["warehouse", "company"], as_dict=True)
+        pos_data = frappe.get_value(
+            "POS Profile", pos_profile_name, ["warehouse", "company"], as_dict=True
+        )
         if not pos_data:
-             return {"status": "error", "message": _("Could not retrieve data for POS Profile '{0}'.").format(pos_profile_name)}
+            return {
+                "status": "error",
+                "message": _("Could not retrieve data for POS Profile '{0}'.").format(
+                    pos_profile_name
+                ),
+            }
 
-        source_warehouse =  pos_data.warehouse
-        company =  pos_data.company
+        source_warehouse = pos_data.warehouse
+        company = pos_data.company
 
         if not source_warehouse:
-            return {"status": "error", "message": _("Warehouse is not set in POS Profile '{0}'.").format(pos_profile_name)}
+            return {
+                "status": "error",
+                "message": _("Warehouse is not set in POS Profile '{0}'.").format(
+                    pos_profile_name
+                ),
+            }
         # الخطوة 2: فلترة الأصناف واستخدام البيانات التفصيلية
         for item_data in items_list:
             item_code = item_data.get("item_code")
             if not item_code or not item_data.get("qty"):
-                frappe.log_error(f"Skipping invalid item entry: {item_data}", "Material Issue Creation from POS")
+                frappe.log_error(
+                    f"Skipping invalid item entry: {item_data}",
+                    "Material Issue Creation from POS",
+                )
                 continue
 
             # التحقق إذا كان الصنف مخزنيًا
             is_stock_item = frappe.get_value("Item", item_code, "is_stock_item")
             if is_stock_item:
-                item_data['s_warehouse'] = source_warehouse
+                item_data["s_warehouse"] = source_warehouse
                 stock_items_to_add.append(item_data)
             else:
                 ignored_items.append(item_code)
@@ -508,21 +561,23 @@ def create_material_issue_from_pos(pos_profile_name, items_list,folio_name=None)
                 "status": "warning",
                 "message": _("No stockable items found in the provided list."),
                 "doc_name": None,
-                "ignored_items": ignored_items
+                "ignored_items": ignored_items,
             }
 
         # الخطوة 3: إنشاء وإعتماد إدخال المخزون
-        stock_entry_type = frappe.db.get_value("Stock Entry Type", { "purpose": "Material Issue"}, "name")
+        stock_entry_type = frappe.db.get_value(
+            "Stock Entry Type", {"purpose": "Material Issue"}, "name"
+        )
         se = frappe.new_doc("Stock Entry")
         se.purpose = "Material Issue"
         se.stock_entry_type = stock_entry_type
         se.set_posting_time = 1
         se.company = company
-        se.custom_from_pos= 1
+        se.custom_from_pos = 1
         se.custom_folio = folio_name
-        
-        if hasattr(se, 'from_warehouse'):
-             se.from_warehouse = source_warehouse
+
+        if hasattr(se, "from_warehouse"):
+            se.from_warehouse = source_warehouse
 
         for item in stock_items_to_add:
             se.append("items", item)
@@ -532,21 +587,26 @@ def create_material_issue_from_pos(pos_profile_name, items_list,folio_name=None)
 
         return {
             "status": "success",
-            "message": _("Material Issue {0} created successfully from POS Profile '{1}'.").format(se.name, pos_profile_name),
+            "message": _(
+                "Material Issue {0} created successfully from POS Profile '{1}'."
+            ).format(se.name, pos_profile_name),
             "doc_name": se.name,
-            "ignored_items": ignored_items
+            "ignored_items": ignored_items,
         }
 
     except Exception as e:
-        frappe.log_error(frappe.get_traceback(), "Material Issue Creation from POS Failed")
+        frappe.log_error(
+            frappe.get_traceback(), "Material Issue Creation from POS Failed"
+        )
         frappe.db.rollback()
         return {
             "status": "error",
             "message": str(e),
             "doc_name": None,
-            "ignored_items": ignored_items
+            "ignored_items": ignored_items,
         }
-        
+
+
 def prepare_se_items_from_invoice(invoice_doc_json: str) -> list:
     """
     تقوم هذه الدالة بمعالجة بيانات الفاتورة بصيغة JSON،
@@ -565,18 +625,19 @@ def prepare_se_items_from_invoice(invoice_doc_json: str) -> list:
             return []
         se_items_list = []
         for cart_item in items_to_issue:
-            se_items_list.append({
-                "item_code": cart_item.get("item_code"),
-                "qty": cart_item.get("qty"),
-                "uom": cart_item.get("uom"),
-                "stock_uom": cart_item.get("stock_uom"),
-                "conversion_factor": cart_item.get("conversion_factor"),
-                "basic_rate": cart_item.get("rate"),
-            })   
+            se_items_list.append(
+                {
+                    "item_code": cart_item.get("item_code"),
+                    "qty": cart_item.get("qty"),
+                    "uom": cart_item.get("uom"),
+                    "stock_uom": cart_item.get("stock_uom"),
+                    "conversion_factor": cart_item.get("conversion_factor"),
+                    "basic_rate": cart_item.get("rate"),
+                }
+            )
         return se_items_list
 
     except json.JSONDecodeError:
         return []
     except Exception as e:
         return []
-        

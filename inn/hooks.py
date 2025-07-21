@@ -149,6 +149,7 @@ jinja = {
         "inn.inn_hotels.doctype.inn_pos_usage.inn_pos_usage.print_list_order",
         "inn.inn_hotels.page.pos_extended.pos_extended.get_table_number",
         "inn.inn_hotels.doctype.inn_pos_usage.inn_extended_bill.extended_bil_extra_data",
+        "inn.inn_hotels.doctype.ar_city_ledger_invoice.ar_city_ledger_invoice.get_arci_details_print",
     ]
 }
 
