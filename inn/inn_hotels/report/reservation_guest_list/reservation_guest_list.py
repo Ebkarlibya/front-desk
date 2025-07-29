@@ -1,17 +1,20 @@
 # Copyright (c) 2025, Core Initiative and contributors
 # For license information, please see license.txt
 
+from collections import defaultdict
 import frappe
 from frappe import _
 
 
 def execute(filters=None):
+    """Execute the report and return columns and data."""
     columns = get_columns()
     data = get_data(filters)
     return columns, data
 
 
 def get_columns():
+    """Return columns for the report."""
     return [
         {
             "fieldname": "room",
@@ -77,6 +80,23 @@ def get_columns():
 
 
 def get_data(filters):
+    """
+    Retrieves and structures reservation and guest data for the reservation guest list report.
+
+    Args:
+        filters (dict): A dictionary of filters to apply to the reservation query. Supported keys:
+            - "reservation": (str) Reservation name to filter by.
+            - "from_date": (str) Start date for expected arrival (inclusive).
+            - "to_date": (str) End date for expected arrival (inclusive).
+            - "include_cancelled": (bool) Whether to include cancelled reservations.
+
+    Returns:
+        list[dict]: A list of dictionaries representing reservations and their guests, structured in a tree format.
+            Each dictionary contains reservation and guest details, with an "indent" key indicating hierarchy:
+                - indent = 0: Main guest (reservation holder).
+                - indent = 1: Accompanying guest.
+            For accompanying guests, reservation-related fields are cleared.
+    """
     conditions = []
     filter_params = {}
     if filters.get("reservation"):
@@ -117,7 +137,6 @@ def get_data(filters):
         as_dict=True,
         debug=1,
     )
-    from collections import defaultdict
 
     tree_data = []
     reservations_grouped = defaultdict(list)
@@ -127,7 +146,7 @@ def get_data(filters):
         reservations_grouped[row["reservation"]].append(row)
 
     # Step 2: Build tree structure
-    for res_name, guests in reservations_grouped.items():
+    for _res_name, guests in reservations_grouped.items():
         main_guest_name = guests[0]["main_guest"]
 
         # Case: No main guest defined — take first accompanying guest

@@ -506,7 +506,7 @@ frappe.pages["pos-extended"].on_page_load = function (wrapper) {
           frappe.utils.print(
             me.frm.doc.doctype,
             me.frm.doc.name,
-            "POS Extended Table Order",
+            frappe.get_single("POS Extended Settings").pos_table_order,
             me.frm.doc.letter_head,
             me.frm.doc.language || frappe.boot.lang
           );
@@ -544,7 +544,7 @@ frappe.pages["pos-extended"].on_page_load = function (wrapper) {
           frappe.utils.print(
             me.frm.doc.doctype,
             me.frm.doc.name,
-            "POS Extended Captain Order",
+            frappe.get_single("POS Extended Settings").pos_captain_order,
             me.frm.doc.letter_head,
             me.frm.doc.language || frappe.boot.lang
           );
@@ -552,10 +552,12 @@ frappe.pages["pos-extended"].on_page_load = function (wrapper) {
       }
 
       print_bill(draft) {
+        console.log("ignore this", draft);
         frappe.utils.print(
           draft.doctype,
           draft.name,
-          "POS Extended Bill",
+          frappe.get_single("POS Extended Settings").pos_bill,
+          // "POS Extended Bill",
           draft.letter_head,
           draft.language || frappe.boot.lang
         );
