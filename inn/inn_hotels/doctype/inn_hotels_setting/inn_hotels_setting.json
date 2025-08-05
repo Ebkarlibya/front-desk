@@ -125,7 +125,12 @@
   "column_break_ivdn",
   "allow_edit_discount_in_reservation",
   "folio_controls_section",
-  "allow_negative_transaction_value"
+  "allow_negative_transaction_value",
+  "print_format_defaults_tab",
+  "shift_print_foramts_section",
+  "cash_remittance",
+  "column_break_njmm",
+  "cashier_report"
  ],
  "fields": [
   {
@@ -830,11 +835,39 @@
    "fieldname": "allow_negative_transaction_value",
    "fieldtype": "Check",
    "label": "Allow Negative Transaction Value"
+  },
+  {
+   "fieldname": "print_format_defaults_tab",
+   "fieldtype": "Tab Break",
+   "label": "Print Format Defaults"
+  },
+  {
+   "fieldname": "shift_print_foramts_section",
+   "fieldtype": "Section Break",
+   "label": "Shift Print Foramts"
+  },
+  {
+   "fieldname": "cash_remittance",
+   "fieldtype": "Link",
+   "label": "Cash Remittance",
+   "options": "Print Format",
+   "reqd": 1
+  },
+  {
+   "fieldname": "column_break_njmm",
+   "fieldtype": "Column Break"
+  },
+  {
+   "fieldname": "cashier_report",
+   "fieldtype": "Link",
+   "label": "Cashier Report",
+   "options": "Print Format",
+   "reqd": 1
   }
  ],
  "issingle": 1,
  "links": [],
- "modified": "2025-07-29 11:51:26.442985",
+ "modified": "2025-07-30 14:50:06.894710",
  "modified_by": "Administrator",
  "module": "Inn Hotels",
  "name": "Inn Hotels Setting",

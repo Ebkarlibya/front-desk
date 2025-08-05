@@ -10,7 +10,8 @@ def execute(filters=None):
     """Execute the report and return columns and data."""
     columns = get_columns()
     data = get_data(filters)
-    return columns, data
+    report_summary = get_report_summary(data["rooms_booked"], data["guests_booked"])
+    return columns, data["data"], None, None, report_summary
 
 
 def get_columns():
@@ -79,6 +80,27 @@ def get_columns():
     ]
 
 
+def get_report_summary(rooms_booked, guests_booked):
+    """
+    Generate a summary for the report.
+
+    Args:
+        rooms_booked (int): Total number of rooms booked.
+        guests_booked (int): Total number of guests booked.
+
+    Returns:
+        list: A list containing the summary data.
+    """
+    return [
+        {"label": _("Total Rooms Booked"), "value": rooms_booked, "indicator": "Red"},
+        {
+            "label": _("Total Guests Booked"),
+            "value": guests_booked,
+            "indicator": "Green",
+        },
+    ]
+
+
 def get_data(filters):
     """
     Retrieves and structures reservation and guest data for the reservation guest list report.
@@ -141,9 +163,16 @@ def get_data(filters):
     tree_data = []
     reservations_grouped = defaultdict(list)
 
+    rooms_booked = 0
+    guests_booked = 0
+
     # Step 1: Group by reservation
     for row in reservations:
         reservations_grouped[row["reservation"]].append(row)
+
+    for res in reservations_grouped.items():
+        rooms_booked += 1
+        guests_booked += len(res[1])
 
     # Step 2: Build tree structure
     for _res_name, guests in reservations_grouped.items():
@@ -179,56 +208,45 @@ def get_data(filters):
                     guest["expected_arrival"] = ""
                     guest["expected_departure"] = ""
                 tree_data.append(guest)
-    return tree_data
 
-    #         "status": res.status,
-    #         "type": res.type,
-    #         "expected_arrival": res.expected_arrival,
-    #         "expected_departure": res.expected_departure,
-    #         "guest_name": "",
-    #         "passport_number": "",
-    #         "nationality": "",
-    #         "is_group": 1,  # علامة الصف الرئيسي لكي يكون قابل للطي
-    #     }
-    #     data.append(parent_row)
+    tree_data.append(
+        {
+            "reservation": "",
+            "main_guest": "",
+            "customer": "",
+            "expected_arrival": "",
+            "expected_departure": "Total Rooms Booked",
+            "room": "",
+            "status": "",
+            "type": "",
+            "guest_id": "",
+            "guest_name": rooms_booked,
+            "passport_number": "",
+            "nationality": "",
+            "indent": 0,
+        }
+    )
 
-    #     # تحميل مستند الحجز للحصول على بيانات جدول الضيوف المرافقين
-    #     doc = frappe.get_all("Accompanying guests", filters={"parent": res.name})
-
-    #     existing_accompanying_guest_names = []
-    #     if doc.accompanying_guests:
-    #         existing_accompanying_guest_names = [
-    #             guest.companions_name for guest in doc.accompanying_guests
-    #         ]
-
-    #     if res.guest_name and res.guest_name not in existing_accompanying_guest_names:
-    #         main_guest_row = {
-    #             "room": "",
-    #             "reservation": "",
-    #             "customer": "",
-    #             "status": "",
-    #             "type": "",
-    #             "expected_arrival": "",
-    #             "expected_departure": "",
-    #             "guest_name": res.guest_name,
-    #             "passport_number": "",
-    #             "nationality": "",
-    #             "indent": 1,
-    #         }
-    #         data.append(main_guest_row)
-    #     if doc.accompanying_guests and len(doc.accompanying_guests) > 0:
-    #         for guest in doc.accompanying_guests:
-    #             child_row_accompanying = {
-    #                 "room": "",
-    #                 "reservation": "",
-    #                 "customer": "",
-    #                 "status": "",
-    #                 "type": "",
-    #                 "expected_arrival": "",
-    #                 "expected_departure": "",
-    #                 "guest_name": guest.companions_name,
-    #                 "passport_number": guest.passport_number,
-    #                 "nationality": guest.nationality,
-    #                 "indent": 1,  # علامة الصف الفرعي
-    #             }
-    #             data.append(child_row_accompanying)
+    tree_data.append(
+        {
+            "reservation": "",
+            "main_guest": "",
+            "customer": "",
+            "expected_arrival": "",
+            "expected_departure": "Total Guests Booked",
+            "room": "R-314",
+            "status": "",
+            "type": "",
+            "guest_id": "",
+            "guest_name": guests_booked,
+            "passport_number": "",
+            "nationality": "",
+            "indent": 0,
+        }
+    )
+    return {
+        "data": tree_data,
+        "rooms_booked": rooms_booked,
+        "guests_booked": guests_booked,
+    }
+    # return tree_data
