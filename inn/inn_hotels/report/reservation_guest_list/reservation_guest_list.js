@@ -29,6 +29,7 @@ frappe.query_reports["Reservation Guest List"] = {
   formatter: function (value, row, column, data, default_formatter) {
     value = default_formatter(value, row, column, data);
 
+    console.log(value);
     const has_value =
       value && value !== "null" && value !== "undefined" && value.trim() !== "";
     if (!has_value) return "";
