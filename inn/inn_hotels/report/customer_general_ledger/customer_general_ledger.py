@@ -27,16 +27,19 @@ def execute(filters=None):
     filtered_entries = sorted(filtered_entries, key=lambda x: x.posting_date)
 
     # Calculate opening balance before from_date
-    opening_balance = calculate_opening_balance(filtered_entries, filters)
-
+    total_debit, total_credit, opening_balance = calculate_opening_balance(filtered_entries, filters)
     running_balance = opening_balance
+    
+    # Initialize closing totals
+    closing_debit = 0.0
+    closing_credit = 0.0
 
     # Add opening balance row
     data.append({
         "posting_date": "",
         "account": "",
-        "debit": 0.0,
-        "credit": 0.0,
+        "debit": total_debit,
+        "credit": total_credit,
         "balance": opening_balance,
         "voucher_type": "Opening",
         "voucher_no": "",
@@ -46,6 +49,8 @@ def execute(filters=None):
     # Process each GL entry and update running balance
     for entry in filtered_entries:
         running_balance += flt(entry.debit) - flt(entry.credit)
+        closing_debit += flt(entry.debit) + total_debit
+        closing_credit += flt(entry.credit) + total_credit
         data.append({
             "posting_date": entry.posting_date,
             "account": entry.account,
@@ -60,9 +65,9 @@ def execute(filters=None):
     # Add closing balance row
     data.append({
         "posting_date": "",
-        "account": "",
-        "debit": 0.0,
-        "credit": 0.0,
+        "account": "Total",
+        "debit": closing_debit,
+        "credit": closing_credit,
         "balance": running_balance,
         "voucher_type": "Closing",
         "voucher_no": "",
@@ -90,10 +95,11 @@ def get_columns():
 
 def get_gl_entries(filters):
     """
-    Fetch GL entries from the database based on user-provided filters.
+    Fetch GL entries for Customers only, with filters.
     Excludes cancelled entries (`is_cancelled = 0`).
     """
-    conditions = "1=1"
+    conditions = "party_type = 'Customer'"  # Force only Customers
+
     if filters.get("from_date"):
         conditions += f" AND posting_date >= '{filters['from_date']}'"
     if filters.get("to_date"):
@@ -101,7 +107,7 @@ def get_gl_entries(filters):
     if filters.get("account"):
         conditions += f" AND account = '{filters['account']}'"
     if filters.get("customer"):
-        conditions += f" AND party_type = 'Customer' AND party = '{filters['customer']}'"
+        conditions += f" AND party = '{filters['customer']}'"
     if filters.get("company"):
         conditions += f" AND company = '{filters['company']}'"
 
@@ -120,7 +126,7 @@ def apply_special_rules(entries):
     """
     Applies business-specific logic:
     - Removes entries with 'close' in remarks.
-    - If both accounts '1310' and '1311' exist in a voucher, only include debit entries.
+    - If both accounts containing '1310' and '1311' exist in a voucher, only include debit entries.
     """
     result = []
     grouped_by_voucher = {}
@@ -136,7 +142,11 @@ def apply_special_rules(entries):
 
         accounts = [e.account for e in entry_list]
 
-        if "1310" in accounts and "1311" in accounts:
+        # Check if any account contains '1310' or '1311'
+        has_1310 = any("1310" in account for account in accounts)
+        has_1311 = any("1311" in account for account in accounts)
+
+        if has_1310 or has_1311:
             # Include only debit entries
             result += [e for e in entry_list if e.debit > 0]
         else:
@@ -153,11 +163,12 @@ def calculate_opening_balance(entries, filters):
     if not filters.get("from_date"):
         return 0.0
 
-    conditions = f"posting_date < '{filters['from_date']}'"
+    conditions = f"posting_date < '{filters['from_date']}' AND party_type = 'Customer'"  # Force only Customers
+
     if filters.get("account"):
         conditions += f" AND account = '{filters['account']}'"
     if filters.get("customer"):
-        conditions += f" AND party_type = 'Customer' AND party = '{filters['customer']}'"
+        conditions += f" AND party = '{filters['customer']}'"
     if filters.get("company"):
         conditions += f" AND company = '{filters['company']}'"
 
@@ -172,5 +183,7 @@ def calculate_opening_balance(entries, filters):
 
     # Apply business rules to the old entries as well
     old_entries = apply_special_rules(old_entries)
-
-    return sum(flt(e.debit) - flt(e.credit) for e in old_entries)
+    total_debit = sum(flt(e.debit) for e in old_entries)
+    total_credit = sum(flt(e.credit) for e in old_entries)
+    balance = total_debit - total_credit
+    return total_debit,total_credit,balance
