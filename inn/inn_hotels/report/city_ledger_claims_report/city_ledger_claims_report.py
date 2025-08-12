@@ -1,4 +1,4 @@
-# Copyright (c) 2025, Core Initiative and contributors
+# Copyright (c) 2025, Core Initiative
 # For license information, please see license.txt
 
 import frappe
@@ -6,11 +6,14 @@ from frappe import _
 from frappe.utils import flt
 
 def execute(filters=None):
+    """Main report execution function."""
     if not filters:
         filters = {}
 
     columns = get_columns()
     data = []
+
+    # Initialize totals
     totals = {
         "total_amount": 0.0,
         "total_claimed": 0.0,
@@ -19,16 +22,20 @@ def execute(filters=None):
         "left_to_claim": 0.0
     }
 
-    customers = get_customers(filters)
+    # Get all customers even if they exist in only one source
+    customers = get_all_customers(filters)
 
     for customer in customers:
+        # Fetch amounts from each table
         total_amount = get_total_amount(customer)
         total_claimed = get_total_claimed(customer)
         total_received = get_total_received(customer)
 
+        # Compute derived values
         outstanding = total_amount - total_received
         left_to_claim = total_amount - total_claimed - total_received
 
+        # Append row to report
         data.append({
             "customer": customer,
             "total_amount": total_amount,
@@ -45,7 +52,7 @@ def execute(filters=None):
         totals["outstanding"] += outstanding
         totals["left_to_claim"] += left_to_claim
 
-    # Append totals row
+    # Add totals row
     data.append({
         "customer": _("Total"),
         "total_amount": totals["total_amount"],
@@ -57,7 +64,9 @@ def execute(filters=None):
 
     return columns, data
 
+
 def get_columns():
+    """Define the columns of the report."""
     return [
         {
             "label": '<i class="fa fa-user" style="color: #3F51B5;"></i> ' + _("Customer"),
@@ -98,45 +107,62 @@ def get_columns():
         },
     ]
 
-def get_customers(filters):
-    # Return only selected customer if filter is provided
+
+def get_all_customers(filters):
+    """
+    Get all unique customers from AR City Ledger, Invoice, and Payment Entry.
+    Include all even if customer exists in only one table.
+    """
     if filters.get("customer"):
         return [filters["customer"]]
 
-    customers = set()
+    customer_set = set()
 
-    # Collect customers from all relevant Doctypes
-    for doctype, field in [
-        ("AR City Ledger", "customer_id"),
-        ("AR City Ledger Invoice", "customer_id"),
-        ("Payment Entry", "party")
-    ]:
-        rows = frappe.db.sql(f"""
-            SELECT DISTINCT {field} FROM `tab{doctype}`
-            WHERE docstatus = 1
-        """, as_dict=True)
-        for row in rows:
-            if row.get(field):
-                customers.add(row[field])
+    # Get customers from AR City Ledger
+    ar_customers = frappe.db.sql("""
+        SELECT DISTINCT customer_id FROM `tabAR City Ledger`
+        WHERE customer_id IS NOT NULL AND customer_id != ''
+    """, as_dict=True)
+    customer_set.update([row.customer_id for row in ar_customers])
 
-    return sorted(customers)
+    # Get customers from AR City Ledger Invoice
+    invoice_customers = frappe.db.sql("""
+        SELECT DISTINCT customer_id FROM `tabAR City Ledger Invoice`
+        WHERE customer_id IS NOT NULL AND customer_id != ''
+    """, as_dict=True)
+    customer_set.update([row.customer_id for row in invoice_customers])
+
+    # Get customers from Payment Entry
+    payment_customers = frappe.db.sql("""
+        SELECT DISTINCT party FROM `tabPayment Entry`
+        WHERE docstatus = 1 AND party_type = 'Customer' AND party IS NOT NULL AND party != ''
+    """, as_dict=True)
+    customer_set.update([row.party for row in payment_customers])
+
+    return sorted(customer_set)
+
 
 def get_total_amount(customer):
-    res = frappe.db.sql(f"""
+    """Get total amount from AR City Ledger."""
+    res = frappe.db.sql("""
         SELECT SUM(total_amount) FROM `tabAR City Ledger`
         WHERE customer_id = %s
     """, (customer,))
     return flt(res[0][0]) if res else 0.0
 
+
 def get_total_claimed(customer):
-    res = frappe.db.sql(f"""
+    """Get total claimed from AR City Ledger Invoice."""
+    res = frappe.db.sql("""
         SELECT SUM(total_amount) FROM `tabAR City Ledger Invoice`
         WHERE customer_id = %s
     """, (customer,))
     return flt(res[0][0]) if res else 0.0
 
+
 def get_total_received(customer):
-    res = frappe.db.sql(f"""
+    """Get total received from Payment Entry (Cash/Bank)."""
+    res = frappe.db.sql("""
         SELECT SUM(paid_amount) FROM `tabPayment Entry`
         WHERE party_type = 'Customer' AND party = %s AND docstatus = 1
         AND paid_to IN (
