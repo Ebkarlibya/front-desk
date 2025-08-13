@@ -146,7 +146,7 @@ def apply_special_rules(entries):
         has_1310 = any("1310" in account for account in accounts)
         has_1311 = any("1311" in account for account in accounts)
 
-        if has_1310 or has_1311:
+        if has_1310 and has_1311:
             # Include only debit entries
             result += [e for e in entry_list if e.debit > 0]
         else:
