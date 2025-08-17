@@ -19,7 +19,8 @@ def execute(filters=None):
         "total_claimed": 0.0,
         "total_received": 0.0,
         "outstanding": 0.0,
-        "left_to_claim": 0.0
+        "left_to_claim": 0.0,
+        "closing_balance": 0.0
     }
 
     # Get all customers even if they exist in only one source
@@ -30,6 +31,7 @@ def execute(filters=None):
         total_amount = get_total_amount(customer)
         total_claimed = get_total_claimed(customer)
         total_received = get_total_received(customer)
+        closing_balance = get_closing_balance(customer)
 
         # Compute derived values
         outstanding = total_amount - total_received
@@ -42,7 +44,8 @@ def execute(filters=None):
             "total_claimed": total_claimed,
             "total_received": total_received,
             "outstanding": outstanding,
-            "left_to_claim": left_to_claim
+            "left_to_claim": left_to_claim,
+            "closing_balance": closing_balance
         })
 
         # Accumulate totals
@@ -51,6 +54,7 @@ def execute(filters=None):
         totals["total_received"] += total_received
         totals["outstanding"] += outstanding
         totals["left_to_claim"] += left_to_claim
+        totals["closing_balance"] += closing_balance
 
     # Add totals row
     data.append({
@@ -59,7 +63,8 @@ def execute(filters=None):
         "total_claimed": totals["total_claimed"],
         "total_received": totals["total_received"],
         "outstanding": totals["outstanding"],
-        "left_to_claim": totals["left_to_claim"]
+        "left_to_claim": totals["left_to_claim"],
+        "closing_balance": totals["closing_balance"]
     })
 
     return columns, data
@@ -104,6 +109,12 @@ def get_columns():
             "fieldname": "left_to_claim",
             "fieldtype": "Currency",
             "width": 150
+        },
+        {
+            "label": '<i class="fa fa-balance-scale" style="color: #607D8B;"></i> ' + _("Closing Balance"),
+            "fieldname": "closing_balance",
+            "fieldtype": "Currency",
+            "width": 160
         },
     ]
 
@@ -168,5 +179,14 @@ def get_total_received(customer):
         AND paid_to IN (
             SELECT name FROM `tabAccount` WHERE account_type IN ('Cash', 'Bank')
         )
+    """, (customer,))
+    return flt(res[0][0]) if res else 0.0
+
+
+def get_closing_balance(customer):
+    """Calculate closing balance from GL Entry for the customer."""
+    res = frappe.db.sql("""
+        SELECT SUM(debit - credit) FROM `tabGL Entry`
+        WHERE party_type = 'Customer' AND party = %s AND is_cancelled = 0
     """, (customer,))
     return flt(res[0][0]) if res else 0.0
