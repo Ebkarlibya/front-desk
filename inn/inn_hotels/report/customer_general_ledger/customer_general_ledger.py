@@ -6,11 +6,6 @@ from frappe.utils import flt
 from frappe import _
 
 def execute(filters=None):
-    """
-    Main entry point for the report. Applies filters, fetches GL entries,
-    applies special business rules, calculates balances, and returns
-    columns and structured data.
-    """
     if not filters:
         filters = {}
 
@@ -27,49 +22,70 @@ def execute(filters=None):
     filtered_entries = sorted(filtered_entries, key=lambda x: x.posting_date)
 
     # Calculate opening balance before from_date
-    total_debit, total_credit, opening_balance = calculate_opening_balance(filtered_entries, filters)
+    opening_debit, opening_credit, opening_balance = calculate_opening_balance(filtered_entries, filters)
     running_balance = opening_balance
-    
-    # Initialize closing totals
-    closing_debit = 0.0
-    closing_credit = 0.0
 
     # Add opening balance row
     data.append({
         "posting_date": "",
-        "account": "",
-        "debit": total_debit,
-        "credit": total_credit,
+        "account": "Opening",
+        "debit": opening_debit,
+        "credit": opening_credit,
         "balance": opening_balance,
-        "voucher_type": "Opening",
+        "voucher_type": "",
         "voucher_no": "",
         "against_account": ""
     })
 
-    # Process each GL entry and update running balance
+    # Initialize totals for current period (excluding opening)
+    period_debit = 0.0
+    period_credit = 0.0
+
+    # Process GL entries & calculate running balance
     for entry in filtered_entries:
-        running_balance += flt(entry.debit) - flt(entry.credit)
-        closing_debit += flt(entry.debit) + total_debit
-        closing_credit += flt(entry.credit) + total_credit
+        debit = flt(entry.debit)
+        credit = flt(entry.credit)
+
+        running_balance += debit - credit
+        period_debit += debit
+        period_credit += credit
+
         data.append({
             "posting_date": entry.posting_date,
             "account": entry.account,
-            "debit": entry.debit,
-            "credit": entry.credit,
+            "debit": debit,
+            "credit": credit,
             "balance": running_balance,
             "voucher_type": entry.voucher_type,
             "voucher_no": entry.voucher_no,
             "against_account": entry.against
         })
 
-    # Add closing balance row
+    # Add total row (current period only)
     data.append({
         "posting_date": "",
         "account": "Total",
+        "debit": period_debit,
+        "credit": period_credit,
+        "balance": period_debit - period_credit,
+        "voucher_type": "",
+        "voucher_no": "",
+        "against_account": ""
+    })
+
+    # Calculate closing balance = opening + period
+    closing_debit = opening_debit + period_debit
+    closing_credit = opening_credit + period_credit
+    closing_balance = closing_debit - closing_credit
+
+    # Add closing balance row
+    data.append({
+        "posting_date": "",
+        "account": "Closing (Opening + Total)",
         "debit": closing_debit,
         "credit": closing_credit,
-        "balance": running_balance,
-        "voucher_type": "Closing",
+        "balance": closing_balance,
+        "voucher_type": "",
         "voucher_no": "",
         "against_account": ""
     })
