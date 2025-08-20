@@ -34,7 +34,8 @@ def execute(filters=None):
         "balance": opening_balance,
         "voucher_type": "",
         "voucher_no": "",
-        "against_account": ""
+        "against_account": "",
+        "remarks": ""
     })
 
     # Initialize totals for current period (excluding opening)
@@ -58,7 +59,8 @@ def execute(filters=None):
             "balance": running_balance,
             "voucher_type": entry.voucher_type,
             "voucher_no": entry.voucher_no,
-            "against_account": entry.against
+            "against_account": entry.against,
+            "remarks": entry.remarks or ""
         })
 
     # Add total row (current period only)
@@ -70,7 +72,8 @@ def execute(filters=None):
         "balance": period_debit - period_credit,
         "voucher_type": "",
         "voucher_no": "",
-        "against_account": ""
+        "against_account": "",
+        "remarks": ""
     })
 
     # Calculate closing balance = opening + period
@@ -87,7 +90,8 @@ def execute(filters=None):
         "balance": closing_balance,
         "voucher_type": "",
         "voucher_no": "",
-        "against_account": ""
+        "against_account": "",
+        "remarks": ""
     })
 
     return columns, data
@@ -106,6 +110,7 @@ def get_columns():
         {"label": '<i class="fa fa-file-invoice" style="color: #795548;"></i> ' + _("Voucher Type"), "fieldname": "voucher_type", "fieldtype": "Data", "width": 120},
         {"label": '<i class="fa fa-tag" style="color: #4CAF50;"></i> ' + _("Voucher No"), "fieldname": "voucher_no", "fieldtype": "Dynamic Link", "options": "voucher_type", "width": 250},
         {"label": '<i class="fa fa-barcode" style="color: #2196F3;"></i> ' + _("Against Account"), "fieldname": "against_account", "fieldtype": "Data", "width": 250},
+        {"label": '<i class="fa fa-comment" style="color: #607D8B;"></i> ' + _("Remarks"), "fieldname": "remarks", "fieldtype": "Data", "width": 300},
     ]
 
 
@@ -114,7 +119,7 @@ def get_gl_entries(filters):
     Fetch GL entries for Customers only, with filters.
     Excludes cancelled entries (`is_cancelled = 0`).
     """
-    conditions = "party_type = 'Customer'"  # Force only Customers
+    conditions = "party_type = 'Customer'"
 
     if filters.get("from_date"):
         conditions += f" AND posting_date >= '{filters['from_date']}'"
@@ -127,7 +132,6 @@ def get_gl_entries(filters):
     if filters.get("company"):
         conditions += f" AND company = '{filters['company']}'"
 
-    # Exclude cancelled documents
     conditions += " AND is_cancelled = 0"
 
     return frappe.db.sql(f"""
@@ -141,8 +145,8 @@ def get_gl_entries(filters):
 def apply_special_rules(entries):
     """
     Applies business-specific logic:
-    - Removes entries with 'close' in remarks.
-    - If both accounts containing '1310' and '1311' exist in a voucher, only include debit entries.
+    - Removes entries with 'close', 'دفع', or 'اجل' in remarks.
+    - If both accounts containing '1310' and '1311' exist in a voucher, skip the voucher.
     """
     result = []
     grouped_by_voucher = {}
@@ -152,19 +156,15 @@ def apply_special_rules(entries):
         grouped_by_voucher.setdefault(key, []).append(entry)
 
     for key, entry_list in grouped_by_voucher.items():
-        # Skip vouchers that contain 'close' in remarks
-        if any("close" in (e.remarks or "").lower() for e in entry_list):
+        if any("close" in (e.remarks or "").lower() or "دفع" in (e.remarks or "").lower() or "اجل" in (e.remarks or "").lower() for e in entry_list):
             continue
 
         accounts = [e.account for e in entry_list]
-
-        # Check if any account contains '1310' or '1311'
         has_1310 = any("1310" in account for account in accounts)
         has_1311 = any("1311" in account for account in accounts)
 
         if has_1310 and has_1311:
-            # Include only debit entries
-            result += [e for e in entry_list if e.debit > 0]
+            continue
         else:
             result += entry_list
 
@@ -177,9 +177,9 @@ def calculate_opening_balance(entries, filters):
     Applies the same filtering and special rules.
     """
     if not filters.get("from_date"):
-        return 0.0
+        return 0.0, 0.0, 0.0
 
-    conditions = f"posting_date < '{filters['from_date']}' AND party_type = 'Customer'"  # Force only Customers
+    conditions = f"posting_date < '{filters['from_date']}' AND party_type = 'Customer'"
 
     if filters.get("account"):
         conditions += f" AND account = '{filters['account']}'"
@@ -188,7 +188,6 @@ def calculate_opening_balance(entries, filters):
     if filters.get("company"):
         conditions += f" AND company = '{filters['company']}'"
 
-    # Exclude cancelled documents in opening balance
     conditions += " AND is_cancelled = 0"
 
     old_entries = frappe.db.sql(f"""
@@ -197,9 +196,9 @@ def calculate_opening_balance(entries, filters):
         WHERE {conditions}
     """, as_dict=True)
 
-    # Apply business rules to the old entries as well
+    # Apply business rules
     old_entries = apply_special_rules(old_entries)
     total_debit = sum(flt(e.debit) for e in old_entries)
     total_credit = sum(flt(e.credit) for e in old_entries)
     balance = total_debit - total_credit
-    return total_debit,total_credit,balance
+    return total_debit, total_credit, balance
