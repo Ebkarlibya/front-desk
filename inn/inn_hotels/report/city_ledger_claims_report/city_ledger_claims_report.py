@@ -35,7 +35,7 @@ def execute(filters=None):
 
         # Compute derived values
         outstanding = total_amount - total_received
-        left_to_claim = total_amount - total_claimed - total_received
+        left_to_claim = total_amount - total_claimed
 
         # Append row to report
         data.append({
@@ -81,6 +81,12 @@ def get_columns():
             "width": 300
         },
         {
+            "label": '<i class="fa fa-balance-scale" style="color: #607D8B;"></i> ' + _("Closing Balance"),
+            "fieldname": "closing_balance",
+            "fieldtype": "Currency",
+            "width": 160
+        },
+        {
             "label": '<i class="fa fa-money" style="color: #4CAF50;"></i> ' + _("Total Amount"),
             "fieldname": "total_amount",
             "fieldtype": "Currency",
@@ -109,12 +115,6 @@ def get_columns():
             "fieldname": "left_to_claim",
             "fieldtype": "Currency",
             "width": 150
-        },
-        {
-            "label": '<i class="fa fa-balance-scale" style="color: #607D8B;"></i> ' + _("Closing Balance"),
-            "fieldname": "closing_balance",
-            "fieldtype": "Currency",
-            "width": 160
         },
     ]
 
