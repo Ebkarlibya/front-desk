@@ -36,11 +36,11 @@ frappe.query_reports["Customer General Ledger"] = {
             "options": "Company",
             "default": frappe.defaults.get_user_default("Company")
         },
-    ],  // Fixed: Added comma here to separate filters from formatter
+    ],
     formatter: function (value, row, column, data, default_formatter) {
         let iconHTML = '';
-        let color = '#333'; // default color
-    
+        let color = '#333';
+
         switch (column.fieldname) {
             case "against_account":
                 iconHTML = `<i class="fa fa-barcode" style="color: #2196F3;"></i>`;
@@ -73,15 +73,22 @@ frappe.query_reports["Customer General Ledger"] = {
             case "posting_date":
                 iconHTML = `<i class="fa fa-calendar" style="color: #3F51B5;"></i>`; 
                 color = '#3F51B5';
-                break;                                        
+                break;
+            case "remarks":
+                iconHTML = `<i class="fa fa-comment" style="color: #607D8B;"></i>`;
+                color = '#607D8B';
+                break;
             default:
                 return default_formatter(value, row, column, data);
-            
         }
+
+        // Handle empty/null/undefined remarks or other fields
+        const final_value = (value === null || value === undefined || value === "None") ? "" : value;
+
         return `
             <div style="display: flex; align-items: center; gap: 8px; color: ${color}">
                 ${iconHTML}
-                ${default_formatter(value, row, column, data)}
+                ${default_formatter(final_value, row, column, data)}
             </div>
         `;
     }
