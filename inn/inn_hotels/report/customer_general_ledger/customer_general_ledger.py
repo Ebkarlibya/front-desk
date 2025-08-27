@@ -307,7 +307,7 @@ def calculate_opening_balance(entries, filters):
 
     old_entries = frappe.db.sql(
         f"""
-        SELECT debit, credit, remarks, account, voucher_type, voucher_no
+        SELECT debit, credit, remarks, account, voucher_type, voucher_no, party
         FROM `tabGL Entry`
         WHERE {conditions}
     """,
