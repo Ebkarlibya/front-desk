@@ -13,31 +13,31 @@ def execute(filters=None):
             "fieldname": "statistic",
             "label": "Statistic",
             "fieldtype": "Data",
-            "width": 150,
+            "width": 200,
         },
         {
             "fieldname": "today_actual",
             "label": "Today Actual",
             "fieldtype": "Data",
-            "width": 100,
+            "width": 200,
         },
         {
             "fieldname": "mtd_actual",
             "label": "MTD Actual",
             "fieldtype": "Data",
-            "width": 100,
+            "width": 200,
         },
         {
             "fieldname": "mtd_last_month",
             "label": "MTD Last Month",
             "fieldtype": "Data",
-            "width": 100,
+            "width": 200,
         },
         {
             "fieldname": "year_to_date",
             "label": "Year To Date",
             "fieldtype": "Data",
-            "width": 100,
+            "width": 200,
         },
     ]
 
@@ -150,11 +150,27 @@ def get_data(filters):
         #     'Total Day Use', 'Total In House', 'Total Walk In', 'Total Vacant Room']
         keys_obj = frappe.get_all("Inn Room Type", fields=["name"], order_by="idx")
         # keys = [k.name for k in keys_obj]
-        keys = []
+        keys = [
+            "Total Room Available",
+            "Total Room Out of Order",
+            "Total Room House Use",
+            "Total Room Sold",
+            "Total Room Reserved",
+            "Total Room Available",
+            "Total Saleable Room",
+            "Total Day Use",
+            "Total In House",
+            "Total Walk In",
+            "Total Vacant Room",
+        ]
+        sold_tags = []
+        reserved_tags = []
         for k in keys_obj:
+            sold_tags.append(f"{k.name} Sold")
+            reserved_tags.append(f"{k.name} Reserved")
             keys.append(f"{k.name} Sold")
             keys.append(f"{k.name} Reserved")
-            keys.append(f"Total Room {k.name}")
+            # keys.append(f"Total Room {k.name}")
 
         for key in keys:
             room[key] = {
@@ -324,7 +340,7 @@ def get_data(filters):
         revenue = {}
 
         keys = [
-            "4210.001",
+            "4120-إيرادات الإفطار - ETMS",
             "4110.001",
             "4120.001",
             "4120.002",
@@ -349,9 +365,9 @@ def get_data(filters):
 
         gl_entry = get_gl_entry(current_year, next_year)
         for ge in gl_entry:
-            account = ge.account[:8]
+            account = ge.account
             if (
-                account == "4210.001"
+                account == "4120-إيرادات الإفطار - ETMS"
                 or account == "4110.001"
                 or account == "4120.001"
                 or account == "4120.002"
@@ -418,19 +434,20 @@ def get_data(filters):
         for key in room:
             title = key
             indent = 0.0
+            if key in sold_tags or key in reserved_tags:
 
-            if (
-                key == "Studio Sold"
-                or key == "Superior Sold"
-                or key == "Deluxe Sold"
-                or key == "Executive Sold"
-                or key == "Suite Sold"
-                or key == "Studio Reserved"
-                or key == "Superior Reserved"
-                or key == "Deluxe Reserved"
-                or key == "Executive Reserved"
-                or key == "Suite Reserved"
-            ):
+                # if (
+                #     key == "Studio Sold"
+                #     or key == "Superior Sold"
+                #     or key == "Deluxe Sold"
+                #     or key == "Executive Sold"
+                #     or key == "Suite Sold"
+                #     or key == "Studio Reserved"
+                #     or key == "Superior Reserved"
+                #     or key == "Deluxe Reserved"
+                #     or key == "Executive Reserved"
+                #     or key == "Suite Reserved"
+                # ):
                 indent = 1.0
 
             today_actual = "{:,}".format(room[key]["today_actual"]).replace(",", ".")
@@ -492,7 +509,7 @@ def get_data(filters):
             if key == "4210.001":
                 title = "Room Revenue"
                 indent = 0.0
-            elif key == "4110.001":
+            elif key == "4120-إيرادات الإفطار - ETMS":
                 data.append(
                     {
                         "statistic": "Restaurant Revenue",

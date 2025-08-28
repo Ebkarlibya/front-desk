@@ -277,11 +277,11 @@ def apply_special_rules(entries):
         if count_1310 > 1:
             continue
 
-        if has_1310 and has_1311:
-            # Include only debit entries
-            result += [e for e in entry_list if e.debit > 0]
-        else:
-            result += entry_list
+        # if has_1310 and has_1311:
+        #     # Include only debit entries
+        #     result += [e for e in entry_list if e.debit > 0]
+        # else:
+        result += entry_list
 
     return result
 
