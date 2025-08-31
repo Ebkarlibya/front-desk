@@ -4,6 +4,7 @@
 import frappe
 from frappe.utils import flt
 from frappe import _
+from collections import Counter
 
 
 def execute(filters=None):
@@ -269,12 +270,18 @@ def apply_special_rules(entries):
 
         accounts = [e.account for e in entry_list]
 
+        parties = [e.party for e in entry_list]
+        party_counts = Counter(parties)
+
+        # True if any party appears more than once
+        has_duplicate_party = any(count > 1 for count in party_counts.values())
+
         # Check if any account contains '1310' or '1311'
         has_1310 = any("1310" in account for account in accounts)
         has_1311 = any("1311" in account for account in accounts)
         count_1310 = sum("1310" in account for account in accounts)
 
-        if count_1310 > 1:
+        if count_1310 > 1 or has_duplicate_party:
             continue
 
         # if has_1310 and has_1311:
