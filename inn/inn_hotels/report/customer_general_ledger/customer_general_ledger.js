@@ -36,11 +36,6 @@ frappe.query_reports["Customer General Ledger"] = {
       options: "Company",
       default: frappe.defaults.get_user_default("Company"),
     },
-    {
-      fieldname: "group_by_folio",
-      label: __("Group By Folio"),
-      fieldtype: "Check",
-    },
   ],
   formatter: function (value, row, column, data, default_formatter) {
     let iconHTML = "";

@@ -24,9 +24,6 @@ def execute(filters=None):
     # Sort entries by posting date
     filtered_entries = sorted(filtered_entries, key=lambda x: x.posting_date)
 
-    if filters.get("group_by_folio"):
-        return columns, group_by_folio(filtered_entries)
-
     # Calculate opening balance before from_date
     opening_debit, opening_credit, opening_balance = calculate_opening_balance(
         filtered_entries, filters
@@ -112,42 +109,6 @@ def execute(filters=None):
     )
 
     return columns, data
-
-
-def group_by_folio(filtered_entries):
-    folios = {"ORPHAN": []}
-    data = []
-    for entry in filtered_entries:
-        folio = frappe.db.get_value(
-            "Inn Folio Transaction",
-            filters={"journal_entry_id": entry["voucher_no"]},
-            fieldname=["parent"],
-        )
-        if not folio:
-            folios["ORPHAN"].append(entry)
-            continue
-        else:
-            if not folios.get(folio):
-                folios[folio] = []
-            folios[folio].append(entry)
-    for key, values in folios.items():
-        mock_entry = {
-            "posting_date": "",
-            "account": key,
-            "debit": "",
-            "credit": "",
-            "voucher_type": "",
-            "voucher_no": "",
-            "remarks": "",
-            "against": "",
-            "party": "",
-            "indent": 0,
-        }
-        data.append(mock_entry)
-        for v in values:
-            entry["indent"] = 1
-            data.append(entry)
-    return data
 
 
 def get_columns():
