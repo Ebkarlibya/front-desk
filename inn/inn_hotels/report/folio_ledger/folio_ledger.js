@@ -1,7 +1,7 @@
 // Copyright (c) 2025, Core Initiative and contributors
 // For license information, please see license.txt
 
-frappe.query_reports["Customer General Ledger"] = {
+frappe.query_reports["Folio Ledger"] = {
   filters: [
     {
       fieldname: "from_date",
@@ -17,12 +17,7 @@ frappe.query_reports["Customer General Ledger"] = {
       default: frappe.datetime.get_today(),
       reqd: 1,
     },
-    {
-      fieldname: "account",
-      label: __("Account"),
-      fieldtype: "Link",
-      options: "Account",
-    },
+
     {
       fieldname: "customer",
       label: __("Customer"),
@@ -35,11 +30,6 @@ frappe.query_reports["Customer General Ledger"] = {
       fieldtype: "Link",
       options: "Company",
       default: frappe.defaults.get_user_default("Company"),
-    },
-    {
-      fieldname: "group_by_folio",
-      label: __("Group By Folio"),
-      fieldtype: "Check",
     },
   ],
   formatter: function (value, row, column, data, default_formatter) {

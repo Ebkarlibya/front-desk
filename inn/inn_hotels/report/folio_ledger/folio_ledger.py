@@ -1,6 +1,3 @@
-# Copyright (c) 2025, Core Initiative and contributors
-# For license information, please see license.txt
-
 from dataclasses import field
 import frappe
 from frappe.utils import flt
@@ -24,94 +21,94 @@ def execute(filters=None):
     # Sort entries by posting date
     filtered_entries = sorted(filtered_entries, key=lambda x: x.posting_date)
 
-    if filters.get("group_by_folio"):
-        return columns, group_by_folio(filtered_entries)
+    # if filters.get("group_by_folio"):
+    return columns, group_by_folio(filtered_entries)
 
     # Calculate opening balance before from_date
-    opening_debit, opening_credit, opening_balance = calculate_opening_balance(
-        filtered_entries, filters
-    )
-    running_balance = opening_balance
+    # opening_debit, opening_credit, opening_balance = calculate_opening_balance(
+    #     filtered_entries, filters
+    # )
+    # running_balance = opening_balance
 
     # Add opening balance row
-    data.append(
-        {
-            "posting_date": "",
-            "account": "Opening",
-            "debit": opening_debit,
-            "credit": opening_credit,
-            "balance": opening_balance,
-            "voucher_type": "",
-            "voucher_no": "",
-            "against_account": "",
-            "remarks": "",
-        }
-    )
+    # data.append(
+    #     {
+    #         "posting_date": "",
+    #         "account": "Opening",
+    #         "debit": opening_debit,
+    #         "credit": opening_credit,
+    #         "balance": opening_balance,
+    #         "voucher_type": "",
+    #         "voucher_no": "",
+    #         "against_account": "",
+    #         "remarks": "",
+    #     }
+    # )
 
     # Initialize totals for current period (excluding opening)
-    period_debit = 0.0
-    period_credit = 0.0
+    # period_debit = 0.0
+    # period_credit = 0.0
 
-    # Process GL entries & calculate running balance
+    # # Process GL entries & calculate running balance
 
-    for entry in filtered_entries:
-        debit = flt(entry.debit)
-        credit = flt(entry.credit)
+    # for entry in filtered_entries:
+    #     debit = flt(entry.debit)
+    #     credit = flt(entry.credit)
 
-        running_balance += debit - credit
-        period_debit += debit
-        period_credit += credit
+    #     running_balance += debit - credit
+    #     period_debit += debit
+    #     period_credit += credit
 
-        data.append(
-            {
-                "posting_date": entry.posting_date,
-                "account": entry.account,
-                "debit": debit,
-                "credit": credit,
-                "balance": running_balance,
-                "voucher_type": entry.voucher_type,
-                "voucher_no": entry.voucher_no,
-                "against_account": entry.against,
-                "remarks": entry.remarks or "",
-            }
-        )
+    #     data.append(
+    #         {
+    #             "posting_date": entry.posting_date,
+    #             "account": entry.account,
+    #             "debit": debit,
+    #             "credit": credit,
+    #             "balance": running_balance,
+    #             "voucher_type": entry.voucher_type,
+    #             "voucher_no": entry.voucher_no,
+    #             "against_account": entry.against,
+    #             "remarks": entry.remarks or "",
+    #         }
+    #     )
 
-    # Add total row (current period only)
-    data.append(
-        {
-            "posting_date": "",
-            "account": "Total",
-            "debit": period_debit,
-            "credit": period_credit,
-            "balance": period_debit - period_credit,
-            "voucher_type": "",
-            "voucher_no": "",
-            "against_account": "",
-            "remarks": "",
-        }
-    )
+    # # Add total row (current period only)
+    # data.append(
+    #     {
+    #         "posting_date": "",
+    #         "account": "Total",
+    #         "debit": period_debit,
+    #         "credit": period_credit,
+    #         "balance": period_debit - period_credit,
+    #         "voucher_type": "",
+    #         "voucher_no": "",
+    #         "against_account": "",
+    #         "remarks": "",
+    #     }
+    # )
 
-    # Calculate closing balance = opening + period
-    closing_debit = opening_debit + period_debit
-    closing_credit = opening_credit + period_credit
-    closing_balance = closing_debit - closing_credit
+    # # Calculate closing balance = opening + period
+    # closing_debit = opening_debit + period_debit
+    # closing_credit = opening_credit + period_credit
+    # closing_balance = closing_debit - closing_credit
 
-    # Add closing balance row
-    data.append(
-        {
-            "posting_date": "",
-            "account": "Closing (Opening + Total)",
-            "debit": closing_debit,
-            "credit": closing_credit,
-            "balance": closing_balance,
-            "voucher_type": "",
-            "voucher_no": "",
-            "against_account": "",
-            "remarks": "",
-        }
-    )
+    # # Add closing balance row
+    # data.append(
+    #     {
+    #         "posting_date": "",
+    #         "account": "Closing (Opening + Total)",
+    #         "debit": closing_debit,
+    #         "credit": closing_credit,
+    #         "balance": closing_balance,
+    #         "voucher_type": "",
+    #         "voucher_no": "",
+    #         "against_account": "",
+    #         "remarks": "",
+    #     }
+    # )
 
-    return columns, data
+    # return columns, data
 
 
 def group_by_folio(filtered_entries):
@@ -234,8 +231,8 @@ def get_gl_entries(filters):
         conditions += f" AND posting_date >= '{filters['from_date']}'"
     if filters.get("to_date"):
         conditions += f" AND posting_date <= '{filters['to_date']}'"
-    if filters.get("account"):
-        conditions += f" AND account = '{filters['account']}'"
+    # if filters.get("account"):
+    #     conditions += f" AND account = '{filters['account']}'"
     if filters.get("customer"):
         conditions += f" AND party = '{filters['customer']}'"
     if filters.get("company"):
