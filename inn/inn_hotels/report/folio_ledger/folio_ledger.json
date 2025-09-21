@@ -1,0 +1,68 @@
+{
+ "add_total_row": 0,
+ "add_translate_data": 0,
+ "columns": [],
+ "creation": "2025-09-21 11:18:29.471572",
+ "disabled": 0,
+ "docstatus": 0,
+ "doctype": "Report",
+ "filters": [],
+ "idx": 0,
+ "is_standard": "Yes",
+ "letter_head": "\u0634\u0631\u0643\u0629 \u0623\u062d\u062c\u0627\u0631 \u0627\u0644\u0645\u0627\u0633\u0629 - \u0641\u0646\u062f\u0642 \u0627\u0644\u0645\u0627\u0633\u0629 1",
+ "letterhead": null,
+ "modified": "2025-09-21 11:18:52.998150",
+ "modified_by": "Administrator",
+ "module": "Inn Hotels",
+ "name": "Folio Ledger",
+ "owner": "Administrator",
+ "prepared_report": 0,
+ "ref_doctype": "Inn Folio",
+ "report_name": "Folio Ledger",
+ "report_type": "Script Report",
+ "roles": [
+  {
+   "role": "Accounts User"
+  },
+  {
+   "role": "Accounts Manager"
+  },
+  {
+   "role": "System Manager"
+  },
+  {
+   "role": "\u0627\u0644\u0627\u0633\u062a\u0642\u0628\u0627\u0644"
+  },
+  {
+   "role": "\u0627\u0644\u0627\u0633\u062a\u0642\u0628\u0627\u0644"
+  },
+  {
+   "role": "\u0627\u0644\u0643\u0627\u0634\u064a\u0631"
+  },
+  {
+   "role": "\u0627\u0644\u0643\u0627\u0634\u064a\u0631"
+  },
+  {
+   "role": "\u0631\u0626\u064a\u0633 \u0627\u0644\u0627\u0633\u062a\u0642\u0628\u0627\u0644"
+  },
+  {
+   "role": "\u0631\u0626\u064a\u0633 \u0627\u0644\u0627\u0633\u062a\u0642\u0628\u0627\u0644"
+  },
+  {
+   "role": "System Manager"
+  },
+  {
+   "role": "\u0627\u0644\u0645\u062d\u0627\u0633\u0628\u0629"
+  },
+  {
+   "role": "\u0627\u0644\u0645\u062d\u0627\u0633\u0628\u0629"
+  },
+  {
+   "role": "Reception User"
+  },
+  {
+   "role": "Night Audit"
+  }
+ ],
+ "timeout": 0
+}
