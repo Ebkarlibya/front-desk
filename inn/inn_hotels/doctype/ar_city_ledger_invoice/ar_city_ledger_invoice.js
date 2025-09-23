@@ -83,6 +83,10 @@ frappe.ui.form.on("AR City Ledger Invoice Payments", {
       calculate_payments(frm);
     }
   },
+  print_payment: function (frm, cdt, cdn) {
+    let child = locals[cdt][cdn];
+    print_payment_receipt(frm, child);
+  },
   // before_payments_remove: function (frm, cdt, cdn) {
   //   let child = locals[cdt][cdn];
   //   console.log(child);
@@ -253,6 +257,26 @@ function make_payment_visibility(frm) {
     frm.set_df_property("sb5", "hidden", 0);
   }
 }
+
+function print_payment_receipt(frm, child) {
+  // Get the AR City Ledger Invoice Receipt Format from Inn Hotels Setting
+  frappe.call({
+    method: "frappe.client.get_value",
+    args: {
+      doctype: "Inn Hotels Setting",
+      fieldname: "ar_city_ledger_invoice_dp",
+    },
+    callback: function(r) {
+      let print_format = (r.message && r.message.ar_city_ledger_invoice_dp) || "Standard";
+            frappe.set_route('print', 'AR City Ledger Invoice Payments', child.name, {
+        print_format: print_format,
+        no_letterhead: 0,
+        trigger_print: 1  
+      });
+    }
+  });
+}
+
 
 function disable_form(frm) {
   frm.disable_save();
