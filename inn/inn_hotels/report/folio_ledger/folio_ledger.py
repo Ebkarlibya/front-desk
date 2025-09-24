@@ -127,12 +127,30 @@ def group_by_folio(filtered_entries):
             if not folios.get(folio):
                 folios[folio] = []
             folios[folio].append(entry)
+    # for key, values in folios.items():
+    #     mock_entry = {
+    #         "posting_date": "",
+    #         "account": key,
+    #         "debit": "",
+    #         "credit": "",
+    #         "voucher_type": "",
+    #         "voucher_no": "",
+    #         "remarks": "",
+    #         "against": "",
+    #         "party": "",
+    #         "indent": 0,
+    #     }
+    #     data.append(mock_entry)
+    #     for v in values:
+    #         v["indent"] = 1
+    #         data.append(v)
     for key, values in folios.items():
         mock_entry = {
             "posting_date": "",
             "account": key,
-            "debit": "",
-            "credit": "",
+            "debit": 0,
+            "credit": 0,
+            "balance": 0,
             "voucher_type": "",
             "voucher_no": "",
             "remarks": "",
@@ -140,10 +158,19 @@ def group_by_folio(filtered_entries):
             "party": "",
             "indent": 0,
         }
-        data.append(mock_entry)
+
+        if key == "ORPHAN":
+            data.append(mock_entry)
         for v in values:
-            entry["indent"] = 1
-            data.append(entry)
+            if key == "ORPHAN":
+                v["indent"] = 1
+                data.append(v)
+            else:
+                mock_entry["debit"] += v["debit"]
+                mock_entry["credit"] += v["credit"]
+                mock_entry["balance"] += v["debit"] - v["credit"]
+        if key != "ORPHAN":
+            data.append(mock_entry)
     return data
 
 
@@ -161,10 +188,10 @@ def get_columns():
         },
         {
             "label": '<i class="fa fa-barcode" style="color: #2196F3;"></i> '
-            + _("Account"),
+            + _("Folio"),
             "fieldname": "account",
             "fieldtype": "Link",
-            "options": "Account",
+            "options": "Inn Folio",
             "width": 250,
         },
         {

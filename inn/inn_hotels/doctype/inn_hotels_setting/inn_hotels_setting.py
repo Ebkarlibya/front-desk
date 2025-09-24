@@ -15,7 +15,14 @@ from inn.helper import role
 
 
 class InnHotelsSetting(Document):
-    pass
+	def get_query_for_ar_city_ledger_invoice_dp(self):
+		"""Filter print formats to show all print formats for both AR City Ledger Invoice and AR City Ledger Invoice Payments"""
+		return frappe.db.sql("""
+			SELECT name, name as title
+			FROM `tabPrint Format`
+			WHERE doc_type = 'AR City Ledger Invoice Payments'
+			ORDER BY name
+		""")
 
 
 @frappe.whitelist()
