@@ -22,6 +22,7 @@ def execute(filters=None):
     filtered_entries = sorted(filtered_entries, key=lambda x: x.posting_date)
 
     # if filters.get("group_by_folio"):
+
     return columns, group_by_folio(filtered_entries)
 
     # Calculate opening balance before from_date
@@ -144,6 +145,10 @@ def group_by_folio(filtered_entries):
     #     for v in values:
     #         v["indent"] = 1
     #         data.append(v)
+
+    balance = 0
+    period_debit = 0
+    period_credit = 0
     for key, values in folios.items():
         mock_entry = {
             "posting_date": "",
@@ -168,9 +173,27 @@ def group_by_folio(filtered_entries):
             else:
                 mock_entry["debit"] += v["debit"]
                 mock_entry["credit"] += v["credit"]
-                mock_entry["balance"] += v["debit"] - v["credit"]
+                balance += v["debit"] - v["credit"]
+                mock_entry["balance"] = balance
+                period_debit += v["debit"]
+                period_credit += v["credit"]
         if key != "ORPHAN":
             data.append(mock_entry)
+
+    data.append(
+        {
+            "posting_date": "",
+            "account": "Closing (Total)",
+            "debit": period_debit,
+            "credit": period_credit,
+            "balance": balance,
+            "voucher_type": "",
+            "voucher_no": "",
+            "against_account": "",
+            "remarks": "",
+        }
+    )
+
     return data
 
 
