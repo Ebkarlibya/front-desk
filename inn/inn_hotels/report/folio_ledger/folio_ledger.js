@@ -23,6 +23,7 @@ frappe.query_reports["Folio Ledger"] = {
       label: __("Customer"),
       fieldtype: "Link",
       options: "Customer",
+      reqd: 1,
     },
     {
       fieldname: "company",
