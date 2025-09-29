@@ -81,9 +81,12 @@ frappe.query_reports["Folio Ledger"] = {
     // Handle empty/null/undefined remarks or other fields
     const final_value =
       value === null || value === undefined || value === "None" ? "" : value;
-
+    weight = "";
+    if (typeof final_value === "string" && final_value.includes("Closing")) {
+      weight = "bold";
+    }
     return `
-            <div style="display: flex; align-items: center; gap: 8px; color: ${color}">
+            <div style="display: flex; align-items: center; gap: 8px; color: ${color}; font-weight: ${weight} ; ">
                 ${iconHTML}
                 ${default_formatter(final_value, row, column, data)}
             </div>
