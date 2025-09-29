@@ -169,6 +169,8 @@ def group_by_folio(filtered_entries):
         for v in values:
             if key == "ORPHAN":
                 v["indent"] = 1
+                balance += v["debit"] - v["credit"]
+                v["balance"] = balance
                 data.append(v)
             else:
                 mock_entry["debit"] += v["debit"]
@@ -179,7 +181,19 @@ def group_by_folio(filtered_entries):
                 period_credit += v["credit"]
         if key != "ORPHAN":
             data.append(mock_entry)
-
+    # data.append(
+    #     {
+    #         "posting_date": "",
+    #         "account": "",
+    #         "debit": " ",
+    #         "credit": " ",
+    #         "balance": " ",
+    #         "voucher_type": " ",
+    #         "voucher_no": " ",
+    #         "against_account": "",
+    #         "remarks": "",
+    #     }
+    # )
     data.append(
         {
             "posting_date": "",
