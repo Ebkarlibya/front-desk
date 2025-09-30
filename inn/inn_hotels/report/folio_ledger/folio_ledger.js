@@ -32,6 +32,11 @@ frappe.query_reports["Folio Ledger"] = {
       options: "Company",
       default: frappe.defaults.get_user_default("Company"),
     },
+    {
+      fieldname: "is_collabsable",
+      label: __("Expand"),
+      fieldtype: "Check",
+    },
   ],
   formatter: function (value, row, column, data, default_formatter) {
     let iconHTML = "";
