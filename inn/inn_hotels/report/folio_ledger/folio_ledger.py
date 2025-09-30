@@ -23,12 +23,18 @@ def execute(filters=None):
 
     # if filters.get("group_by_folio"):
 
-    return columns, group_by_folio(filtered_entries)
-
     # Calculate opening balance before from_date
-    # opening_debit, opening_credit, opening_balance = calculate_opening_balance(
-    #     filtered_entries, filters
-    # )
+    opening_debit, opening_credit, opening_balance = calculate_opening_balance(
+        filtered_entries, filters
+    )
+    return columns, group_by_folio(
+        filtered_entries,
+        opening_debit,
+        opening_credit,
+        opening_balance,
+        filters.get("is_collabsable", 0),
+    )
+
     # running_balance = opening_balance
 
     # Add opening balance row
@@ -112,7 +118,9 @@ def execute(filters=None):
     # return columns, data
 
 
-def group_by_folio(filtered_entries):
+def group_by_folio(
+    filtered_entries, opening_debit, opening_credit, opening_balance, is_collabsable
+):
     folios = {"ORPHAN": []}
     data = []
     for entry in filtered_entries:
@@ -146,9 +154,9 @@ def group_by_folio(filtered_entries):
     #         v["indent"] = 1
     #         data.append(v)
 
-    balance = 0
-    period_debit = 0
-    period_credit = 0
+    balance = opening_balance
+    period_debit = opening_debit
+    period_credit = opening_credit
     for key, values in folios.items():
         mock_entry = {
             "posting_date": "",
@@ -168,10 +176,15 @@ def group_by_folio(filtered_entries):
             data.append(mock_entry)
         for v in values:
             if key == "ORPHAN":
-                v["indent"] = 1
+                mock_entry["debit"] += v["debit"]
+                mock_entry["credit"] += v["credit"]
                 balance += v["debit"] - v["credit"]
-                v["balance"] = balance
-                data.append(v)
+                mock_entry["balance"] = balance
+                if is_collabsable:
+                    v["indent"] = 1
+                    v["balance"] = balance
+
+                    data.append(v)
             else:
                 mock_entry["debit"] += v["debit"]
                 mock_entry["credit"] += v["credit"]
