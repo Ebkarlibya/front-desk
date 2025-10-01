@@ -121,7 +121,7 @@ def execute(filters=None):
 def group_by_folio(
     filtered_entries, opening_debit, opening_credit, opening_balance, is_collabsable
 ):
-    folios = {"ORPHAN": []}
+    folios = {"OPENING": []}
     data = []
     for entry in filtered_entries:
         folio = frappe.db.get_value(
@@ -130,7 +130,7 @@ def group_by_folio(
             fieldname=["parent"],
         )
         if not folio:
-            folios["ORPHAN"].append(entry)
+            folios["OPENING"].append(entry)
             continue
         else:
             if not folios.get(folio):
@@ -172,14 +172,16 @@ def group_by_folio(
             "indent": 0,
         }
 
-        if key == "ORPHAN":
+        if key == "OPENING":
             data.append(mock_entry)
         for v in values:
-            if key == "ORPHAN":
+            if key == "OPENING":
                 mock_entry["debit"] += v["debit"]
                 mock_entry["credit"] += v["credit"]
                 balance += v["debit"] - v["credit"]
                 mock_entry["balance"] = balance
+                period_debit += v["debit"]
+                period_credit += v["credit"]
                 if is_collabsable:
                     v["indent"] = 1
                     v["balance"] = balance
@@ -192,7 +194,7 @@ def group_by_folio(
                 mock_entry["balance"] = balance
                 period_debit += v["debit"]
                 period_credit += v["credit"]
-        if key != "ORPHAN":
+        if key != "OPENING":
             data.append(mock_entry)
     # data.append(
     #     {
