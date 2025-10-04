@@ -322,6 +322,7 @@ frappe.pages["pos-extended"].on_page_load = function (wrapper) {
               fieldname: "paying_customer",
               fieldtype: "Link",
               options: "Customer",
+              filters: { disabled: ["!=", 1] },
               reqd: 1,
               col: 6,
               description: __("Select the customer who will pay this bill."),

@@ -121,7 +121,7 @@ def execute(filters=None):
 def group_by_folio(
     filtered_entries, opening_debit, opening_credit, opening_balance, is_collabsable
 ):
-    folios = {"OPENING": []}
+    folios = {"OPENING": [], "PAYMENTS": [], "IS_OPENING": []}
     data = []
     for entry in filtered_entries:
         folio = frappe.db.get_value(
@@ -129,8 +129,25 @@ def group_by_folio(
             filters={"journal_entry_id": entry["voucher_no"]},
             fieldname=["parent"],
         )
-        if not folio:
+        if folio:
+            posting_date = frappe.db.get_value(
+                "Inn Folio",
+                filters={"name": folio},
+                fieldname=["open"],
+            )
+            entry["posting_date"] = posting_date
+        if (
+            not folio
+            and entry["voucher_type"] != "Payment Entry"
+            and entry["is_opening"] == "No"
+        ):
             folios["OPENING"].append(entry)
+            continue
+        elif entry["voucher_type"] == "Payment Entry":
+            folios["PAYMENTS"].append(entry)
+            continue
+        elif entry["is_opening"] == "Yes":
+            folios["IS_OPENING"].append(entry)
             continue
         else:
             if not folios.get(folio):
@@ -157,6 +174,7 @@ def group_by_folio(
     balance = opening_balance
     period_debit = opening_debit
     period_credit = opening_credit
+    payments = []
     for key, values in folios.items():
         mock_entry = {
             "posting_date": "",
@@ -175,27 +193,35 @@ def group_by_folio(
         if key == "OPENING":
             data.append(mock_entry)
         for v in values:
+            mock_entry["debit"] += v["debit"]
+            mock_entry["credit"] += v["credit"]
+            balance += v["debit"] - v["credit"]
+            mock_entry["balance"] = balance
+            period_debit += v["debit"]
+            period_credit += v["credit"]
             if key == "OPENING":
-                mock_entry["debit"] += v["debit"]
-                mock_entry["credit"] += v["credit"]
-                balance += v["debit"] - v["credit"]
-                mock_entry["balance"] = balance
-                period_debit += v["debit"]
-                period_credit += v["credit"]
+
                 if is_collabsable:
                     v["indent"] = 1
                     v["balance"] = balance
-
                     data.append(v)
+            elif key == "PAYMENTS":
+                data.append(v)
+
+            elif key == "IS_OPENING":
+                data.append(v)
             else:
-                mock_entry["debit"] += v["debit"]
-                mock_entry["credit"] += v["credit"]
-                balance += v["debit"] - v["credit"]
-                mock_entry["balance"] = balance
-                period_debit += v["debit"]
-                period_credit += v["credit"]
-        if key != "OPENING":
-            data.append(mock_entry)
+                mock_entry["posting_date"] = v["posting_date"]
+                data.append(mock_entry)
+            # else:
+            #     mock_entry["debit"] += v["debit"]
+            #     mock_entry["credit"] += v["credit"]
+            #     balance += v["debit"] - v["credit"]
+            #     mock_entry["balance"] = balance
+            #     period_debit += v["debit"]
+            #     period_credit += v["credit"]
+        # if key != "OPENING":
+        #     data.append(mock_entry)
     # data.append(
     #     {
     #         "posting_date": "",
@@ -321,7 +347,7 @@ def get_gl_entries(filters):
 
     return frappe.db.sql(
         f"""
-        SELECT posting_date, account, debit, credit, voucher_type, voucher_no, remarks, against, party
+        SELECT posting_date, account, debit, credit, voucher_type, voucher_no, remarks, against, party, is_opening
         FROM `tabGL Entry`
         WHERE {conditions}
         ORDER BY posting_date ASC
