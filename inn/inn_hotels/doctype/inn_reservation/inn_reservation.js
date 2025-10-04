@@ -16,41 +16,57 @@ frappe.ui.form.on("Inn Reservation", {
       check_is_room_booking_already_created(frm);
     }
     // Fetch Inn Hotels Setting to control field editability
-    frappe.db.get_doc('Inn Hotels Setting', 'Inn Hotels Setting')
-        .then(doc => {
-            // Get the setting values
-            const allowEditInitialRate = doc.allow_edit_initial_room_rate_in_reservation;
-            const allowEditDiscount = doc.allow_edit_discount_in_reservation;
+    frappe.db
+      .get_doc("Inn Hotels Setting", "Inn Hotels Setting")
+      .then((doc) => {
+        // Get the setting values
+        const allowEditInitialRate =
+          doc.allow_edit_initial_room_rate_in_reservation;
+        const allowEditDiscount = doc.allow_edit_discount_in_reservation;
 
-            // Apply read_only property based on settings
-            // If setting is unchecked (0), then make the field read-only (true)
-            // If setting is checked (1), then allow editing (false)
-            frm.set_df_property('init_actual_room_rate', 'read_only', !allowEditInitialRate);
-            frm.set_df_property('discount', 'read_only', !allowEditDiscount);
+        // Apply read_only property based on settings
+        // If setting is unchecked (0), then make the field read-only (true)
+        // If setting is checked (1), then allow editing (false)
+        frm.set_df_property(
+          "init_actual_room_rate",
+          "read_only",
+          !allowEditInitialRate
+        );
+        frm.set_df_property("discount", "read_only", !allowEditDiscount);
 
-            // Optional: If not allowed to edit discount, you might want to force it to 0 if not
-            // if (!allowEditDiscount && frm.doc.discount !== 0) {
-            //     frm.set_value('discount', 0);
-            //     frm.refresh_field('discount');
-            // }
-        })
-        .catch(error => {
-            console.error("Error fetching Inn Hotels Setting:", error);
-            // In case of error fetching settings, default to allowing edits
-            frm.set_df_property('init_actual_room_rate', 'read_only', false);
-            frm.set_df_property('discount', 'read_only', false);
-            frappe.msgprint(__('Could not load Hotel Settings. Defaulting to editable fields.'));
-        });
-
+        // Optional: If not allowed to edit discount, you might want to force it to 0 if not
+        // if (!allowEditDiscount && frm.doc.discount !== 0) {
+        //     frm.set_value('discount', 0);
+        //     frm.refresh_field('discount');
+        // }
+      })
+      .catch((error) => {
+        console.error("Error fetching Inn Hotels Setting:", error);
+        // In case of error fetching settings, default to allowing edits
+        frm.set_df_property("init_actual_room_rate", "read_only", false);
+        frm.set_df_property("discount", "read_only", false);
+        frappe.msgprint(
+          __("Could not load Hotel Settings. Defaulting to editable fields.")
+        );
+      });
   },
-  base_room_rate: function(frm) {
+  base_room_rate: function (frm) {
     if (frm.doc.base_room_rate) {
-      frm.set_value('init_actual_room_rate', frm.doc.base_room_rate);
+      frm.set_value("init_actual_room_rate", frm.doc.base_room_rate);
     } else {
-        frm.set_value('init_actual_room_rate', 0); 
+      frm.set_value("init_actual_room_rate", 0);
     }
   },
   refresh: function (frm) {
+    frm.set_query("customer_id", function () {
+      return {
+        query:
+          "inn.inn_hotels.doctype.inn_reservation.inn_reservation.customer_query",
+        searchfield: "name",
+        filters: { disabled: false },
+      };
+    });
+
     is_check_in = getUrlVars()["is_check_in"];
     get_room_max_active_card();
     make_read_only(frm);
@@ -143,7 +159,9 @@ frappe.ui.form.on("Inn Reservation", {
           frm.add_custom_button(__("Finish Check In Process"), function () {
             if (frm.doc.__unsaved !== undefined || frm.doc.unsaved == 1) {
               frappe.msgprint(
-                __("The Reservation has been modified and not saved yet. Please click Save before Finishing Check In Process.")
+                __(
+                  "The Reservation has been modified and not saved yet. Please click Save before Finishing Check In Process."
+                )
               );
             } else {
               is_check_in = "false";
@@ -236,12 +254,16 @@ frappe.ui.form.on("Inn Reservation", {
               callback: (r) => {
                 if (r.message === 1) {
                   frappe.msgprint(
-                    __("Only Reservation with status Reserved can be cancelled. Please choose other Reservation")
+                    __(
+                      "Only Reservation with status Reserved can be cancelled. Please choose other Reservation"
+                    )
                   );
                 } else if (r.message === 0) {
                   frm.refresh();
                   frappe.msgprint(
-                    __("Reservation ") + frm.doc.name + __(" successfully canceled.")
+                    __("Reservation ") +
+                      frm.doc.name +
+                      __(" successfully canceled.")
                   );
                 }
               },
@@ -264,7 +286,9 @@ frappe.ui.form.on("Inn Reservation", {
               callback: (r) => {
                 if (r.message === 1) {
                   frappe.msgprint(
-                    __("Only Reservation with status Reserved can be set to No Show. Please choose other Reservation")
+                    __(
+                      "Only Reservation with status Reserved can be set to No Show. Please choose other Reservation"
+                    )
                   );
                 } else if (r.message === 0) {
                   frm.refresh();
@@ -290,9 +314,11 @@ frappe.ui.form.on("Inn Reservation", {
       frm.page.add_menu_item(__("Cancel"), function () {
         // !check functionality
         frappe.confirm(
-          (
-            __("You are about to Cancel this Reservation with status already") + "<b>"+ __("In House") + "</b>" + __(". Are you sure?")
-          ),
+          __("You are about to Cancel this Reservation with status already") +
+            "<b>" +
+            __("In House") +
+            "</b>" +
+            __(". Are you sure?"),
           function () {
             frappe.call({
               method:
@@ -304,14 +330,19 @@ frappe.ui.form.on("Inn Reservation", {
                 if (r.message === 0) {
                   frm.refresh();
                   frappe.msgprint(
-                    __("Reservation ") + frm.doc.name + __(" successfully canceled.")
+                    __("Reservation ") +
+                      frm.doc.name +
+                      __(" successfully canceled.")
                   );
                 } else if (r.message === 1) {
                   frappe.msgprint(__("Cancellation Fail. Please try again."));
                 } else if (r.message === 2) {
                   frappe.msgprint(
-                    __("There are several outstanding payments. ") + "<br />" +
-                      __("Please go to the Folio page to complete payment process before Cancelling Reservation")
+                    __("There are several outstanding payments. ") +
+                      "<br />" +
+                      __(
+                        "Please go to the Folio page to complete payment process before Cancelling Reservation"
+                      )
                   );
                 }
               },
@@ -329,12 +360,24 @@ frappe.ui.form.on("Inn Reservation", {
       /*Add Warning when changing Arrival and Departure Data*/
       frm.fields_dict.arrival.$input.on("click", function (evt) {
         frappe.show_alert(
-            "<b>" + __("Warning!") + "</b>" + "<br />"+ __("Changing Actual Arrival when Reservation status is In House may cause data inconsistencies.")
+          "<b>" +
+            __("Warning!") +
+            "</b>" +
+            "<br />" +
+            __(
+              "Changing Actual Arrival when Reservation status is In House may cause data inconsistencies."
+            )
         );
       });
       frm.fields_dict.departure.$input.on("click", function (evt) {
         frappe.show_alert(
-            "<b>"+__("Warning!") + "</b>" + "<br />" + __("Changing Actual Departure when Reservation status is In House may cause data inconsistencies.")
+          "<b>" +
+            __("Warning!") +
+            "</b>" +
+            "<br />" +
+            __(
+              "Changing Actual Departure when Reservation status is In House may cause data inconsistencies."
+            )
         );
       });
     }
@@ -388,7 +431,9 @@ frappe.ui.form.on("Inn Reservation", {
           }
         } else {
           frappe.msgprint(
-            __("Warning: There is no audit log defined. First Audit Log must be manually defined. Contact the administrator for assistance.")
+            __(
+              "Warning: There is no audit log defined. First Audit Log must be manually defined. Contact the administrator for assistance."
+            )
           );
         }
       },
@@ -434,7 +479,9 @@ frappe.ui.form.on("Inn Reservation", {
           }
         } else {
           frappe.msgprint(
-            __("Warning: There is no audit log defined. First Audit Log must be manually defined. Contact the administrator for assistance.")
+            __(
+              "Warning: There is no audit log defined. First Audit Log must be manually defined. Contact the administrator for assistance."
+            )
           );
         }
       },
@@ -477,7 +524,9 @@ frappe.ui.form.on("Inn Reservation", {
           ) {
             frm.set_value("arrival", default_arrival);
             frappe.msgprint(
-              __("Actual Departure must be greater than Actual Arrival. Defaulted to Expected Arrival.")
+              __(
+                "Actual Departure must be greater than Actual Arrival. Defaulted to Expected Arrival."
+              )
             );
           } else if (
             frm.doc.arrival == null ||
@@ -486,7 +535,9 @@ frappe.ui.form.on("Inn Reservation", {
           ) {
             frm.set_value("arrival", default_arrival);
             frappe.msgprint(
-              __("Actual Arrival cannot be empty. Defaulted to Expected Arrival.")
+              __(
+                "Actual Arrival cannot be empty. Defaulted to Expected Arrival."
+              )
             );
           } else {
             calculate_rate_and_bill(frm);
@@ -500,7 +551,9 @@ frappe.ui.form.on("Inn Reservation", {
           }
         } else {
           frappe.msgprint(
-            __("Warning: There is no audit log defined. First Audit Log must be manually defined. Contact the administrator for assistance.")
+            __(
+              "Warning: There is no audit log defined. First Audit Log must be manually defined. Contact the administrator for assistance."
+            )
           );
         }
       },
@@ -538,7 +591,9 @@ frappe.ui.form.on("Inn Reservation", {
           ) {
             frm.set_value("departure", default_departure);
             frappe.msgprint(
-              __("Actual Departure must be greater than Actual Arrival. Defaulted to Expected Departure.")
+              __(
+                "Actual Departure must be greater than Actual Arrival. Defaulted to Expected Departure."
+              )
             );
           } else if (
             frm.doc.departure == null ||
@@ -547,7 +602,9 @@ frappe.ui.form.on("Inn Reservation", {
           ) {
             frm.set_value("departure", default_departure);
             frappe.msgprint(
-              __("Actual Departure cannot be empty. Defaulted to Expected Departure.")
+              __(
+                "Actual Departure cannot be empty. Defaulted to Expected Departure."
+              )
             );
           } else {
             frappe.call({
@@ -586,7 +643,12 @@ frappe.ui.form.on("Inn Reservation", {
                             __(". There are already room booking for Room ") +
                             frm.doc.actual_room_id +
                             __(" made for that date.") +
-                            "<br>" + __("Check") + "<b>" + __("Room Availability Page") + "</b>" + __("for more detail.")
+                            "<br>" +
+                            __("Check") +
+                            "<b>" +
+                            __("Room Availability Page") +
+                            "</b>" +
+                            __("for more detail.")
                         );
                         frm.set_value("departure", default_departure);
                       }
@@ -604,7 +666,9 @@ frappe.ui.form.on("Inn Reservation", {
           }
         } else {
           frappe.msgprint(
-            __("Warning: There is no audit log defined. First Audit Log must be manually defined. Contact the administrator for assistance.")
+            __(
+              "Warning: There is no audit log defined. First Audit Log must be manually defined. Contact the administrator for assistance."
+            )
           );
         }
       },
@@ -662,7 +726,7 @@ frappe.ui.form.on("Inn Reservation", {
     }
     manage_filters("actual_room_id", phase, start_date);
   },
-  room_rate: function(frm) {
+  room_rate: function (frm) {
     if (frm.doc.room_rate == undefined || frm.doc.room_rate == "") {
       return;
     }
@@ -728,13 +792,16 @@ frappe.ui.form.on("Inn Reservation", {
         frm.set_value("actual_breakfast_rate_tax", null);
         frm.set_value("nett_actual_breakfast_rate", 0);
       } else {
-        console.log('test',frm.doc.arrival !== undefined && frm.doc.departure !== undefined)
+        console.log(
+          "test",
+          frm.doc.arrival !== undefined && frm.doc.departure !== undefined
+        );
         frm.set_df_property("sb1", "hidden", 0); // Actual Room Rate Breakdown Section
         calculate_rate_and_bill(frm);
       }
     } else {
       if (parseFloat(frm.doc.actual_room_rate) > 0) {
-        console.log("test_1",frm.doc.actual_room_rate)
+        console.log("test_1", frm.doc.actual_room_rate);
         frappe.msgprint(
           __("Please fill Actual Arrival and Actual Departure first.")
         );
@@ -774,7 +841,9 @@ frappe.ui.form.on("Inn Reservation", {
             // calculate_rate_and_bill(frm);
           } else {
             frappe.msgprint(
-              __("Error the discount percentage entered is more than the allowable discount.")
+              __(
+                "Error the discount percentage entered is more than the allowable discount."
+              )
             );
             frm.set_value("init_actual_room_rate", frm.doc.base_room_rate);
             frm.set_value("actual_room_rate", frm.doc.base_room_rate);
@@ -797,7 +866,9 @@ frappe.ui.form.on("Inn Reservation", {
       }
       if (current_active_card >= room_max_active_card) {
         frappe.msgprint(
-          __("Maximum number of active card issued is reached. Cannot issue more card")
+          __(
+            "Maximum number of active card issued is reached. Cannot issue more card"
+          )
         );
       } else {
         frappe.call({
@@ -813,7 +884,9 @@ frappe.ui.form.on("Inn Reservation", {
               );
               return;
             } else {
-              frappe.msgprint(__("Error Issuing Card, Please Redo the Process."));
+              frappe.msgprint(
+                __("Error Issuing Card, Please Redo the Process.")
+              );
             }
           },
         });
@@ -1038,7 +1111,9 @@ function autofill(frm) {
             __("Currently, Room ") +
               frm.doc.room_id +
               __(" status is not Vacant Ready. ") +
-              __("Please consult with Room Service or choose another Room to continue Checking In.")
+              __(
+                "Please consult with Room Service or choose another Room to continue Checking In."
+              )
           );
         }
       },
@@ -1347,8 +1422,11 @@ function process_check_out(frm) {
     callback: (r) => {
       if (r.message !== 0) {
         frappe.msgprint(
-          __("There are several outstanding payments. ")+"<br />" +
-            __("Please go to the Folio page to complete payment process before Checking Out")
+          __("There are several outstanding payments. ") +
+            "<br />" +
+            __(
+              "Please go to the Folio page to complete payment process before Checking Out"
+            )
         );
       } else if (r.message == 0) {
         let current_active_card = 0;
@@ -1360,7 +1438,8 @@ function process_check_out(frm) {
           frappe.msgprint(
             __("There are ") +
               current_active_card +
-              __(" key card(s) still active.")+"<br />" +
+              __(" key card(s) still active.") +
+              "<br />" +
               __(" Please Deactivate all key cards issued before Checking Out")
           );
         } else {
@@ -1553,7 +1632,9 @@ function move_room(frm) {
         d.get_values().mv_actual_room_rate === 0
       ) {
         frappe.msgprint(
-          __("Change Rate is checked. Please fill Room Rate and Actual Room Rate Nominal")
+          __(
+            "Change Rate is checked. Please fill Room Rate and Actual Room Rate Nominal"
+          )
         );
         good_to_go = 0;
       } else {
