@@ -212,14 +212,16 @@ def group_by_folio(
                 data.append(v)
             else:
                 mock_entry["posting_date"] = v["posting_date"]
-                data.append(mock_entry)
-            # else:
-            #     mock_entry["debit"] += v["debit"]
-            #     mock_entry["credit"] += v["credit"]
-            #     balance += v["debit"] - v["credit"]
-            #     mock_entry["balance"] = balance
-            #     period_debit += v["debit"]
-            #     period_credit += v["credit"]
+
+        if key not in ["OPENING", "PAYMENTS", "IS_OPENING"]:
+            data.append(mock_entry)
+        # else:
+        #     mock_entry["debit"] += v["debit"]
+        #     mock_entry["credit"] += v["credit"]
+        #     balance += v["debit"] - v["credit"]
+        #     mock_entry["balance"] = balance
+        #     period_debit += v["debit"]
+        #     period_credit += v["credit"]
         # if key != "OPENING":
         #     data.append(mock_entry)
     # data.append(
