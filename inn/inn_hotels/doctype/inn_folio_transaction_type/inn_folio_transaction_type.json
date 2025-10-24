@@ -12,7 +12,9 @@
   "is_included",
   "sb0",
   "debit_account",
-  "credit_account"
+  "credit_account",
+  "column_break_fhda",
+  "cost_center"
  ],
  "fields": [
   {
@@ -63,10 +65,20 @@
    "in_list_view": 1,
    "label": "Credit Account",
    "options": "Account"
+  },
+  {
+   "fieldname": "column_break_fhda",
+   "fieldtype": "Column Break"
+  },
+  {
+   "fieldname": "cost_center",
+   "fieldtype": "Link",
+   "label": "Cost Center",
+   "options": "Cost Center"
   }
  ],
  "links": [],
- "modified": "2024-03-14 11:39:52.062425",
+ "modified": "2025-10-22 21:54:07.307824",
  "modified_by": "Administrator",
  "module": "Inn Hotels",
  "name": "Inn Folio Transaction Type",
@@ -132,6 +144,7 @@
   }
  ],
  "quick_entry": 1,
+ "row_format": "Dynamic",
  "sort_field": "modified",
  "sort_order": "DESC",
  "states": [],

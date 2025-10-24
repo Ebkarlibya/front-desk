@@ -20,6 +20,7 @@
   "sb0",
   "debit_account",
   "mode_of_payment",
+  "cost_center",
   "cb1",
   "credit_account",
   "actual_room_rate",
@@ -181,11 +182,20 @@
    "fieldtype": "Currency",
    "label": "Actual Room Rate",
    "read_only": 1
+  },
+  {
+   "fetch_from": "transaction_type.cost_center",
+   "fieldname": "cost_center",
+   "fieldtype": "Link",
+   "in_list_view": 1,
+   "label": "Cost Center",
+   "options": "Cost Center",
+   "read_only": 1
   }
  ],
  "istable": 1,
  "links": [],
- "modified": "2025-07-07 12:44:05.410932",
+ "modified": "2025-10-22 22:03:26.210467",
  "modified_by": "Administrator",
  "module": "Inn Hotels",
  "name": "Inn Folio Transaction",
