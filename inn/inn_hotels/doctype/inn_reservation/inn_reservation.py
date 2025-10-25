@@ -25,6 +25,13 @@ from inn.inn_hotels.doctype.inn_folio.inn_folio import (
 class InnReservation(Document):
     def validate(self):
         """Validate that accompanying guests don't exceed total guests count"""
+
+        is_customer_disabled = frappe.db.get_value(
+            "Customer", self.customer_id, "disabled"
+        )
+
+        if is_customer_disabled:
+            frappe.throw(f'Customer "{self.customer_id}" is disabled')
         # Calculate total allowed guests (children + adults)
         total_guests = (self.child or 0) + (self.adult or 0)
 
@@ -39,6 +46,57 @@ class InnReservation(Document):
             frappe.throw(error_message)
         if not self.guest_name and len(self.accompanying_guests) > 0:
             self.guest_name = self.accompanying_guests[0].companions_name
+
+
+# searches for leads which are not converted
+@frappe.whitelist()
+@frappe.validate_and_sanitize_search_inputs
+def customer_query(doctype, txt, searchfield, start, page_len, filters):
+    data = frappe.db.sql(
+        f"""
+        SELECT ic.customer_name, ic.customer_type
+        FROM `tabInn Customer` ic
+        INNER JOIN `tabCustomer` c ON c.name = ic.customer_name
+        WHERE disabled = 0 and (c.{searchfield} LIKE %(txt)s) and c.disabled = 0
+        LIMIT %(start)s, %(page_len)s
+        """,
+        {
+            "txt": "%{}%".format(txt),
+            "start": start,
+            "page_len": page_len,
+        },
+        as_dict=True,
+    )
+    results = [[d["customer_name"]] for d in data]
+    return results
+    # searches for leads which are not converted
+
+
+# @frappe.whitelist()
+# @frappe.validate_and_sanitize_search_inputs
+# def lead_query(doctype, txt, searchfield, start, page_len, filters):
+#     return frappe.db.sql(
+#         """
+#         SELECT name, lead_name, company_name
+#         FROM `tabLead`
+#         WHERE docstatus < 2
+#         AND ifnull(status, '') != 'Converted'
+#         AND ({key} LIKE %(txt)s
+#         OR lead_name LIKE %(txt)s
+#         OR company_name LIKE %(txt)s)
+#         {mcond}
+
+#         LIMIT %(start)s, %(page_len)s
+#         """.format(
+#             **{"key": searchfield, "mcond": get_match_cond(doctype)}
+#         ),
+#         {
+#             "txt": "%{}%".format(txt),
+#             "_txt": txt.replace("%", ""),
+#             "start": start,
+#             "page_len": page_len,
+#         },
+#     )
 
 
 @frappe.whitelist()

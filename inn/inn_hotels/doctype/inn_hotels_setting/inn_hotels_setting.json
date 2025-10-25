@@ -130,7 +130,9 @@
   "shift_print_foramts_section",
   "cash_remittance",
   "column_break_njmm",
-  "cashier_report"
+  "cashier_report",
+  "ar_city_ledger_default_print_format_section",
+  "ar_city_ledger_invoice_dp"
  ],
  "fields": [
   {
@@ -844,7 +846,7 @@
   {
    "fieldname": "shift_print_foramts_section",
    "fieldtype": "Section Break",
-   "label": "Shift Print Foramts"
+   "label": "Shift Print Formats"
   },
   {
    "fieldname": "cash_remittance",
@@ -863,11 +865,23 @@
    "label": "Cashier Report",
    "options": "Print Format",
    "reqd": 1
+  },
+  {
+   "fieldname": "ar_city_ledger_default_print_format_section",
+   "fieldtype": "Section Break",
+   "label": "AR City Ledger Default Print Format"
+  },
+  {
+   "fieldname": "ar_city_ledger_invoice_dp",
+   "fieldtype": "Link",
+   "label": "AR City Ledger Invoice Print Format",
+   "options": "Print Format",
+   "get_query": "inn.inn_hotels.doctype.inn_hotels_setting.inn_hotels_setting.get_query_for_ar_city_ledger_invoice_dp"
   }
  ],
  "issingle": 1,
  "links": [],
- "modified": "2025-07-30 14:50:06.894710",
+ "modified": "2025-09-21 11:38:32.373568",
  "modified_by": "Administrator",
  "module": "Inn Hotels",
  "name": "Inn Hotels Setting",

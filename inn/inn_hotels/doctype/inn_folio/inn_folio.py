@@ -12,7 +12,9 @@ from frappe.model.document import Document
 
 class InnFolio(Document):
     pass
+
     # def validate(self):
+
     #     settings = frappe.get_single("Inn Hotels Setting")
     #     for trx in self.folio_transaction:
     #         if (

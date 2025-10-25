@@ -1,7 +1,7 @@
 // Copyright (c) 2025, Core Initiative and contributors
 // For license information, please see license.txt
 
-frappe.query_reports["Customer General Ledger"] = {
+frappe.query_reports["Folio Ledger"] = {
   filters: [
     {
       fieldname: "from_date",
@@ -17,17 +17,13 @@ frappe.query_reports["Customer General Ledger"] = {
       default: frappe.datetime.get_today(),
       reqd: 1,
     },
-    {
-      fieldname: "account",
-      label: __("Account"),
-      fieldtype: "Link",
-      options: "Account",
-    },
+
     {
       fieldname: "customer",
       label: __("Customer"),
       fieldtype: "Link",
       options: "Customer",
+      reqd: 1,
     },
     {
       fieldname: "company",
@@ -35,6 +31,11 @@ frappe.query_reports["Customer General Ledger"] = {
       fieldtype: "Link",
       options: "Company",
       default: frappe.defaults.get_user_default("Company"),
+    },
+    {
+      fieldname: "is_collabsable",
+      label: __("Expand"),
+      fieldtype: "Check",
     },
   ],
   formatter: function (value, row, column, data, default_formatter) {
@@ -85,9 +86,12 @@ frappe.query_reports["Customer General Ledger"] = {
     // Handle empty/null/undefined remarks or other fields
     const final_value =
       value === null || value === undefined || value === "None" ? "" : value;
-
+    weight = "";
+    if (typeof final_value === "string" && final_value.includes("Closing")) {
+      weight = "bold";
+    }
     return `
-            <div style="display: flex; align-items: center; gap: 8px; color: ${color}">
+            <div style="display: flex; align-items: center; gap: 8px; color: ${color}; font-weight: ${weight} ; ">
                 ${iconHTML}
                 ${default_formatter(final_value, row, column, data)}
             </div>
