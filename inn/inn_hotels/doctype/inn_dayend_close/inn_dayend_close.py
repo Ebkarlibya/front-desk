@@ -483,10 +483,11 @@ def create_je_for_inn_restaurant_finished_order(transaction_types):
             food_credit_account = frappe.get_doc(
                 "Inn Folio Transaction Type", transaction_types["restaurant_food"]
             ).credit_account
-            
-            cost_center = food_credit_account = frappe.get_doc(
-                "Inn Folio Transaction Type", transaction_types["restaurant_food"]
-            ).cost_center
+            cost_center = frappe.db.get_value(
+                "Inn Folio Transaction Type",
+                transaction_types.get("restaurant_food"),
+                "cost_center",
+            )
             create_journal_entry(
                 food_title,
                 food_remark,
@@ -508,9 +509,11 @@ def create_je_for_inn_restaurant_finished_order(transaction_types):
             bev_credit_account = frappe.get_doc(
                 "Inn Folio Transaction Type", transaction_types["restaurant_beverages"]
             ).credit_account
-            cost_center = food_credit_account = frappe.get_doc(
-                "Inn Folio Transaction Type", transaction_types["restaurant_beverages"]
-            ).cost_center       
+            cost_center = frappe.db.get_value(
+                "Inn Folio Transaction Type",
+                transaction_types.get("restaurant_beverages"),
+                "cost_center",
+            )       
             create_journal_entry(
                 bev_title,
                 bev_remark,
@@ -531,9 +534,11 @@ def create_je_for_inn_restaurant_finished_order(transaction_types):
             other_credit_account = frappe.get_doc(
                 "Inn Folio Transaction Type", transaction_types["restaurant_other"]
             ).credit_account
-            cost_center = food_credit_account = frappe.get_doc(
-                "Inn Folio Transaction Type", transaction_types["restaurant_other"]
-            ).cost_center       
+            cost_center = frappe.db.get_value(
+                "Inn Folio Transaction Type",
+                transaction_types.get("restaurant_other"),
+                "cost_center",
+            )       
             create_journal_entry(
                 other_title,
                 other_remark,
@@ -556,9 +561,11 @@ def create_je_for_inn_restaurant_finished_order(transaction_types):
             ro_credit_account = frappe.get_doc(
                 "Inn Folio Transaction Type", transaction_types["round_off"]
             ).credit_account
-            cost_center = food_credit_account = frappe.get_doc(
-                "Inn Folio Transaction Type", transaction_types["round_off"]
-            ).cost_center              
+            cost_center = frappe.db.get_value(
+                "Inn Folio Transaction Type",
+                transaction_types.get("round_off"),
+                "cost_center",
+            )              
             create_journal_entry(
                 ro_title,
                 ro_remark,
@@ -579,9 +586,11 @@ def create_je_for_inn_restaurant_finished_order(transaction_types):
         srv_credit_account = frappe.get_doc(
             "Inn Folio Transaction Type", transaction_types["fbs_service_10"]
         ).credit_account
-        cost_center = food_credit_account = frappe.get_doc(
-            "Inn Folio Transaction Type", transaction_types["fbs_service_10"]
-        ).cost_center          
+        cost_center = frappe.db.get_value(
+            "Inn Folio Transaction Type",
+            transaction_types.get("fbs_service_10"),
+            "cost_center",
+        )         
         create_journal_entry(
             service_title,
             service_remark,
@@ -599,9 +608,11 @@ def create_je_for_inn_restaurant_finished_order(transaction_types):
         tax_credit_account = frappe.get_doc(
             "Inn Folio Transaction Type", transaction_types["fbs_tax_11"]
         ).credit_account
-        cost_center = food_credit_account = frappe.get_doc(
-            "Inn Folio Transaction Type", transaction_types["fbs_tax_11"]
-        ).cost_center          
+        cost_center = frappe.db.get_value(
+            "Inn Folio Transaction Type",
+            transaction_types.get("fbs_tax_11"),
+            "cost_center",
+        )           
         create_journal_entry(
             tax_title,
             tax_remark,
