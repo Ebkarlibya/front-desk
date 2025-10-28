@@ -216,44 +216,31 @@ def calculate_opening_balances_per_customer(filters):
 
 def apply_special_rules(entries):
     """
-    Applies business-specific logic to a list of GL entries.
-    -   Removes entries where remarks contain 'close' (case-insensitive).
-    -   For vouchers containing both '1310' and '1311' accounts, only debit entries are included.
-
-    Args:
-        entries (list): A list of dictionaries, each representing a GL entry.
-
-    Returns:
-        list: A filtered list of GL entries after applying the rules.
+    Applies business-specific logic:
+    - Removes entries with 'close', 'دفع', or 'اجل' in remarks.
+    - If both accounts containing '1310' and '1311' exist in a voucher, skip the voucher.
     """
-    filtered_entries_after_rules = []
-    
-    # Group entries by voucher to apply rules at a voucher level.
+    result = []
     grouped_by_voucher = {}
+
     for entry in entries:
-        key = (entry.voucher_type, entry.voucher_no) # Use voucher type and number as a unique key for grouping.
+        key = (entry.voucher_type, entry.voucher_no)
         grouped_by_voucher.setdefault(key, []).append(entry)
 
-    for key_tuple, entry_list_for_voucher in grouped_by_voucher.items():
-        # Rule 1: Skip vouchers that contain 'close' in remarks.
-        if any("close" in (entry.remarks or "").lower() for entry in entry_list_for_voucher):
+    for key, entry_list in grouped_by_voucher.items():
+        if any("close" in (e.remarks or "").lower() or "دفع" in (e.remarks or "").lower() or "اجل" in (e.remarks or "").lower() for e in entry_list):
             continue
 
-        accounts_in_voucher = [entry.account for entry in entry_list_for_voucher]
+        accounts = [e.account for e in entry_list]
+        has_1310 = any("1310" in account for account in accounts)
+        has_1311 = any("1311" in account for account in accounts)
 
-        # Rule 2: If both accounts containing '1310' and '1311' exist in a voucher,
-        #         only include debit entries from that voucher.
-        has_1310_account = any("1310" in account for account in accounts_in_voucher)
-        has_1311_account = any("1311" in account for account in accounts_in_voucher)
-
-        if has_1310_account and has_1311_account:
-            # Add only debit entries from this voucher.
-            filtered_entries_after_rules += [entry for entry in entry_list_for_voucher if entry.debit > 0]
+        if has_1310 and has_1311:
+            continue
         else:
-            # Otherwise, include all entries from this voucher.
-            filtered_entries_after_rules += entry_list_for_voucher
+            result += entry_list
 
-    return filtered_entries_after_rules
+    return result
 
 
 def get_report_summary(data):

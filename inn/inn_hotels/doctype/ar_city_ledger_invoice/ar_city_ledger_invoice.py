@@ -5,11 +5,88 @@
 from __future__ import unicode_literals
 import frappe
 from frappe.model.document import Document
-
+from frappe import _
 
 class ARCityLedgerInvoice(Document):
-    pass
+    def validate(self):
+        """
+        Validates the 'AR City Ledger Invoice' document before saving.
+        This includes checking for:
+        1. Duplicate folios within the same document's child table.
+        2. Folios already present in other submitted AR City Ledger Invoices.
+        """
+        self.validate_unique_folios_in_table()
+        self.validate_folios_not_in_other_invoices()
 
+    def validate_unique_folios_in_table(self):
+        """
+        Checks if there are any duplicate folios in the 'folio' child table
+        of the current AR City Ledger Invoice document.
+        Raises a ValidationError if duplicates are found.
+        """
+        if not self.folio:
+            return 
+
+        seen_folios = set()
+        for item in self.folio:
+            if not item.folio_id:
+                continue 
+            
+            if item.folio_id in seen_folios:
+                frappe.throw(
+                    _("Folio '{0}' is duplicated in the Folio to be Collected table. Please ensure each folio is added only once.").format(item.folio_id),
+                    title=_("Duplicate Folio Error")
+                )
+            seen_folios.add(item.folio_id)
+
+    def validate_folios_not_in_other_invoices(self):
+        """
+        Checks if any folio in the 'folio' child table of the current document
+        is already present in another AR City Ledger Invoice that is not cancelled.
+        Raises a ValidationError if a folio is found in another invoice.
+        """
+        if not self.folio:
+            return 
+
+        current_document_name = self.name if self.name else "" 
+
+
+        for item in self.folio:
+            if not item.folio_id:
+                continue
+
+            try:
+                conflicting_invoice_name = frappe.db.sql(
+                    """
+                    SELECT
+                        t1.name
+                    FROM
+                        `tabAR City Ledger Invoice` t1
+                    JOIN
+                        `tabAR City Ledger Invoice Folio` t2
+                        ON t1.name = t2.parent
+                    WHERE
+                        t2.folio_id = %(folio_id)s
+                        AND t1.name != %(current_doc_name)s
+                        AND t1.status != 'Cancelled'
+                    LIMIT 1
+                    """,
+                    {
+                        "folio_id": item.folio_id,
+                        "current_doc_name": current_document_name
+                    },
+                    as_dict=True
+                )
+
+            except Exception as e:
+                frappe.throw(_("An unexpected error occurred during folio validation for {0}: {1}").format(item.folio_id, str(e)))
+
+            if conflicting_invoice_name:
+                conflicting_invoice_name = conflicting_invoice_name[0].name
+                frappe.throw(
+                    _("Folio '{0}' is already present in another AR City Ledger Invoice '{1}'. Please remove it from this document or cancel the conflicting invoice.").format(item.folio_id, conflicting_invoice_name),
+                    title=_("Folio Already Used Error")
+                )
 
 @frappe.whitelist()
 def get_payments_accounts(mode_of_payment):
