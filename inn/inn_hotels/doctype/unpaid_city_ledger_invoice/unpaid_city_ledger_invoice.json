@@ -1,0 +1,83 @@
+{
+ "actions": [],
+ "allow_rename": 1,
+ "creation": "2025-10-27 21:42:46.427381",
+ "doctype": "DocType",
+ "editable_grid": 1,
+ "engine": "InnoDB",
+ "field_order": [
+  "reference_doctype",
+  "reference_name",
+  "column_break_4",
+  "total_amount",
+  "outstanding_amount",
+  "allocated_amount"
+ ],
+ "fields": [
+  {
+   "columns": 2,
+   "default": "AR City Ledger Invoice",
+   "fieldname": "reference_doctype",
+   "fieldtype": "Link",
+   "in_list_view": 1,
+   "label": "Type",
+   "options": "DocType",
+   "read_only": 1,
+   "reqd": 1,
+   "search_index": 1
+  },
+  {
+   "columns": 2,
+   "fieldname": "reference_name",
+   "fieldtype": "Dynamic Link",
+   "in_global_search": 1,
+   "in_list_view": 1,
+   "label": "Name",
+   "options": "reference_doctype",
+   "reqd": 1,
+   "search_index": 1
+  },
+  {
+   "fieldname": "column_break_4",
+   "fieldtype": "Column Break"
+  },
+  {
+   "columns": 2,
+   "fieldname": "total_amount",
+   "fieldtype": "Float",
+   "in_list_view": 1,
+   "label": "Grand Total",
+   "print_hide": 1,
+   "read_only": 1
+  },
+  {
+   "columns": 2,
+   "fieldname": "outstanding_amount",
+   "fieldtype": "Float",
+   "in_list_view": 1,
+   "label": "Outstanding",
+   "read_only": 1
+  },
+  {
+   "columns": 2,
+   "fieldname": "allocated_amount",
+   "fieldtype": "Float",
+   "in_list_view": 1,
+   "label": "Allocated"
+  }
+ ],
+ "grid_page_length": 50,
+ "index_web_pages_for_search": 1,
+ "istable": 1,
+ "links": [],
+ "modified": "2025-10-29 22:44:56.961460",
+ "modified_by": "Administrator",
+ "module": "Inn Hotels",
+ "name": "Unpaid City Ledger Invoice",
+ "owner": "Administrator",
+ "permissions": [],
+ "row_format": "Dynamic",
+ "sort_field": "modified",
+ "sort_order": "DESC",
+ "states": []
+}
