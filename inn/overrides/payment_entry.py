@@ -110,3 +110,60 @@ def on_payment_entry_submit_custom_logic(doc, method):
                     _("Error updating AR City Ledger Invoice {0} from Payment Entry {1}: {2}").format(invoice_item.reference_name, doc.name, cstr(e)),
                     _("AR City Ledger Update Error")
                 )
+
+
+def on_payment_entry_cancel_custom_logic(doc, method):
+    """
+    When canceling a Payment Entry: We undo everything we did during the approval process.
+        - We delete (or remove) the rows associated with the same payment_entry_id from the ar_city_ledger_invoice_payment_entry table in each referenced AR City Ledger Invoice.
+        - We deduct the total amounts deleted from the total_paid.
+        - We add the same amounts to the outstanding.
+        - We save the changes with the ignore permissions (ignore_permissions=True).
+    """
+    if not doc.custom_unpaid_city_ledger_invoice:
+        return
+
+    for invoice_item in doc.custom_unpaid_city_ledger_invoice:
+        if not invoice_item.reference_name or flt(invoice_item.allocated_amount) <= 0:
+            continue
+
+        try:
+            arci_doc = frappe.get_doc("AR City Ledger Invoice", invoice_item.reference_name)
+
+            related_rows = [r for r in arci_doc.get("ar_city_ledger_invoice_payment_entry") or [] if r.payment_entry_id == doc.name]
+            if not related_rows:
+                frappe.log_error(
+                    _("No payment_entry reference found in AR City Ledger Invoice {0} for Payment Entry {1} during cancellation.").format(invoice_item.reference_name, doc.name),
+                    _("AR City Ledger Cancel Warning")
+                )
+                continue
+
+            total_removed = sum(flt(r.payment_amount) for r in related_rows)
+
+            remaining_rows = [r for r in arci_doc.get("ar_city_ledger_invoice_payment_entry") or [] if r.payment_entry_id != doc.name]
+            arci_doc.ar_city_ledger_invoice_payment_entry = remaining_rows
+
+            arci_doc.total_paid = flt(arci_doc.total_paid) - total_removed
+
+            arci_doc.outstanding = flt(arci_doc.outstanding) + total_removed
+
+            arci_doc.save(ignore_permissions=True)
+
+            if abs(flt(total_removed) - flt(invoice_item.allocated_amount)) > 0.005:
+                frappe.log_error(
+                    _("Mismatch during cancel for AR City Ledger Invoice {0} from Payment Entry {1}: expected to remove {2} but removed {3}.").format(
+                        invoice_item.reference_name, doc.name, flt(invoice_item.allocated_amount), flt(total_removed)
+                    ),
+                    _("AR City Ledger Cancel Amount Mismatch")
+                )
+
+        except frappe.DoesNotExistError:
+            frappe.log_error(
+                _("AR City Ledger Invoice {0} not found during cancellation of Payment Entry {1}").format(invoice_item.reference_name, doc.name),
+                _("AR City Ledger Cancel Error")
+            )
+        except Exception as e:
+            frappe.log_error(
+                _("Error while cancelling AR City Ledger Invoice {0} for Payment Entry {1}: {2}").format(invoice_item.reference_name, doc.name, cstr(e)),
+                _("AR City Ledger Cancel Error")
+            )

@@ -103,7 +103,9 @@ doc_events = {
         "validate": "inn.inn_hotels.doctype.inn_folio_transaction.inn_folio_transaction.add_audit_date"
     },
     "Payment Entry": {
-        "on_submit": "inn.overrides.payment_entry.on_payment_entry_submit_custom_logic"
+        "on_submit": "inn.overrides.payment_entry.on_payment_entry_submit_custom_logic",
+        "on_cancel": "inn.overrides.payment_entry.on_payment_entry_cancel_custom_logic",
+
     },   
 }
 
