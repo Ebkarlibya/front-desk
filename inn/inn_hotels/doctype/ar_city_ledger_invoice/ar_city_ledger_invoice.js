@@ -55,6 +55,43 @@ frappe.ui.form.on("AR City Ledger Invoice", {
   },
 });
 
+// Parent-level handlers for child table add/remove events (robust)
+frappe.ui.form.on("AR City Ledger Invoice", "payments_add", function (frm) {
+  // prevent adding payments when no folio
+  if (!frm.doc.folio || frm.doc.folio.length === 0) {
+    frappe.msgprint(__("Please add Folio to be Collected first"));
+    frm.doc.payments = [];
+    frm.refresh_field("payments");
+  } else {
+    calculate_payments(frm);
+  }
+});
+frappe.ui.form.on("AR City Ledger Invoice", "payments_remove", function (frm) {
+  calculate_payments(frm);
+});
+frappe.ui.form.on(
+  "AR City Ledger Invoice",
+  "ar_city_ledger_invoice_payment_entry_add",
+  function (frm) {
+    // prevent adding payment entry when no folio
+    if (!frm.doc.folio || frm.doc.folio.length === 0) {
+      frappe.msgprint(__("Please add Folio to be Collected first"));
+      frm.doc.ar_city_ledger_invoice_payment_entry = [];
+      frm.refresh_field("ar_city_ledger_invoice_payment_entry");
+    } else {
+      calculate_payments(frm);
+    }
+  }
+);
+frappe.ui.form.on(
+  "AR City Ledger Invoice",
+  "ar_city_ledger_invoice_payment_entry_remove",
+  function (frm) {
+    calculate_payments(frm);
+  }
+);
+
+// Child doctype handlers (field-level triggers)
 frappe.ui.form.on("AR City Ledger Invoice Folio", {
   folio_id: function (frm, cdt, cdn) {
     let child = locals[cdt][cdn];
@@ -66,8 +103,8 @@ frappe.ui.form.on("AR City Ledger Invoice Folio", {
 });
 
 frappe.ui.form.on("AR City Ledger Invoice Payments", {
+  // called when a payment row is added via child doctype handler (fallback)
   payments_add: function (frm) {
-    // منع إضافة دفعات دون وجود فوليو
     if (!frm.doc.folio || frm.doc.folio.length === 0) {
       frappe.msgprint(__("Please add Folio to be Collected first"));
       frm.doc.payments = [];
@@ -79,8 +116,8 @@ frappe.ui.form.on("AR City Ledger Invoice Payments", {
   },
   payment_amount: function (frm, cdt, cdn) {
     let child = locals[cdt][cdn];
-    if (child.payment_amount) {
-      calculate_payments(frm);
+    if (child) {
+      enforce_overpayment_limit_for_payment_child(frm, child, "payments");
     }
   },
   print_payment: function (frm, cdt, cdn) {
@@ -134,31 +171,37 @@ frappe.ui.form.on("AR City Ledger Invoice Payments", {
 
 // ********** HANDLE Payment Entry TABLE (new: same behavior as payments) **********
 frappe.ui.form.on("AR City Ledger Invoice Payment Entry", {
-  // عندما يضاف صف في جدول Payment Entry
-  payment_entry_id: function(frm, cdt, cdn) {
+  // field triggers for Payment Entry child doctype
+  payment_entry_id: function (frm, cdt, cdn) {
     calculate_payments(frm);
   },
-  payment_amount: function(frm, cdt, cdn) {
+  payment_amount: function (frm, cdt, cdn) {
     let child = locals[cdt][cdn];
-    if (child.payment_amount) {
-      calculate_payments(frm);
+    if (child) {
+      enforce_overpayment_limit_for_payment_child(
+        frm,
+        child,
+        "ar_city_ledger_invoice_payment_entry"
+      );
     }
   },
-  // حدث الإضافة — نمنع الإضافة لو ما في فوليو
-  payment_entry_add: function(frm) {
+  // fallback add/remove handlers when registered on child doctype (some setups)
+  payment_entry_add: function (frm) {
     if (!frm.doc.folio || frm.doc.folio.length === 0) {
       frappe.msgprint(__("Please add Folio to be Collected first"));
       frm.doc.ar_city_ledger_invoice_payment_entry = [];
       frm.refresh_field("ar_city_ledger_invoice_payment_entry");
+    } else {
+      calculate_payments(frm);
     }
   },
-  // حدث الحذف — نعيد الحساب
-  payment_entry_remove: function(frm) {
+  payment_entry_remove: function (frm) {
     calculate_payments(frm);
-  }
+  },
 });
 // ************************ END Payment Entry HANDLERS ***************************
 
+// restrict Mode of Payment choices for payments table (unchanged)
 cur_frm.set_query("mode_of_payment", "payments", function (doc, cdt, cdn) {
   var d = locals[cdt][cdn];
   return {
@@ -201,79 +244,127 @@ function autofill_by_folio(child) {
         folio_id: child.folio_id,
       },
       callback: (r) => {
-        child.customer_id = r.message.customer_id;
-        child.amount = r.message.total_amount;
-        child.open = r.message.folio_open;
-        child.close = r.message.folio_close;
-        child.ar_city_ledger_id = r.message.name;
-        cur_frm.refresh_field("folio");
+        if (r.message) {
+          child.customer_id = r.message.customer_id;
+          child.amount = r.message.total_amount;
+          child.open = r.message.folio_open;
+          child.close = r.message.folio_close;
+          child.ar_city_ledger_id = r.message.name;
+          cur_frm.refresh_field("folio");
 
-        if (child.amount != 0) {
-          calculate_payments(cur_frm);
+          if (child.amount != 0) {
+            calculate_payments(cur_frm);
+          }
         }
       },
     });
   }
 }
 
+/**
+ * calculate_payments(frm)
+ * - يجمع total_amount من جدول الفوليو
+ * - يجمع total_paid من جدول payments و ar_city_ledger_invoice_payment_entry
+ * - يحدث total_amount, total_paid, outstanding في الـ form
+ */
 function calculate_payments(frm) {
   let total_amount = 0.0;
   let total_paid = 0.0;
   let outstanding = 0.0;
-  let folios = [];
-  let payments = [];
-  let payment_entries = [];
 
-  if (frm.doc.folio) {
-    folios = frm.doc.folio;
-  }
-  if (frm.doc.payments) {
-    payments = frm.doc.payments;
-  }
-  if (frm.doc.ar_city_ledger_invoice_payment_entry) {
-    payment_entries = frm.doc.ar_city_ledger_invoice_payment_entry;
-  }
-
-  // حساب إجمالي الفوليوهات
-  if (folios.length > 0) {
-    for (let i = 0; i < folios.length; i++) {
-      if (folios[i].amount !== undefined) {
-        total_amount += flt(folios[i].amount);
+  // Folios
+  if (frm.doc.folio && frm.doc.folio.length > 0) {
+    frm.doc.folio.forEach((f) => {
+      if (f.amount !== undefined && f.amount !== null && f.amount !== "") {
+        total_amount += flt(f.amount);
       }
-    }
-  } else {
-    total_amount = 0.0;
+    });
   }
 
-  // حساب إجمالي الدفعات من جدول payments
-  if (payments.length > 0) {
-    for (let i = 0; i < payments.length; i++) {
-      if (payments[i].payment_amount !== undefined) {
-        total_paid += flt(payments[i].payment_amount);
+  // Payments table
+  if (frm.doc.payments && frm.doc.payments.length > 0) {
+    frm.doc.payments.forEach((p) => {
+      if (p.payment_amount !== undefined && p.payment_amount !== null && p.payment_amount !== "") {
+        total_paid += flt(p.payment_amount);
       }
-    }
-  } else {
+    });
   }
 
-  // حساب إجمالي من جدول Payment Entry (الجديد)
-  if (payment_entries.length > 0) {
-    for (let i = 0; i < payment_entries.length; i++) {
-      if (payment_entries[i].payment_amount !== undefined) {
-        total_paid += flt(payment_entries[i].payment_amount);
+  // Payment Entry table (fieldname in parent is ar_city_ledger_invoice_payment_entry)
+  if (frm.doc.ar_city_ledger_invoice_payment_entry && frm.doc.ar_city_ledger_invoice_payment_entry.length > 0) {
+    frm.doc.ar_city_ledger_invoice_payment_entry.forEach((pe) => {
+      if (pe.payment_amount !== undefined && pe.payment_amount !== null && pe.payment_amount !== "") {
+        total_paid += flt(pe.payment_amount);
       }
-    }
+    });
   }
 
   outstanding = total_amount - total_paid;
+
+  // Avoid negative outstanding shown due to float errors
+  if (Math.abs(outstanding) < 0.000001) outstanding = 0.0;
 
   frm.set_value("total_amount", total_amount);
   frm.set_value("total_paid", total_paid);
   frm.set_value("outstanding", outstanding);
 }
 
+/**
+ * enforce_overpayment_limit_for_payment_child(frm, child, parent_table_fieldname)
+ * - parent_table_fieldname: "payments"  OR  "ar_city_ledger_invoice_payment_entry"
+ * - يقيس المبلغ المسموح للصف الحالي ويمنع تجاوزه؛ إذا تجاوزه يتم تعديل الخانة إلى الحد المسموح وإظهار رسالة
+ */
+function enforce_overpayment_limit_for_payment_child(frm, child, parent_table_fieldname) {
+  // حساب إجمالي الفوليوهات
+  let total_amount = 0.0;
+  if (frm.doc.folio) {
+    frm.doc.folio.forEach((f) => {
+      if (f.amount !== undefined && f.amount !== null && f.amount !== "") total_amount += flt(f.amount);
+    });
+  }
+
+  let other_paid = 0.0;
+
+  if (frm.doc.payments) {
+    frm.doc.payments.forEach((p) => {
+      if (p.name !== child.name && p.payment_amount) other_paid += flt(p.payment_amount);
+    });
+  }
+
+  if (frm.doc.ar_city_ledger_invoice_payment_entry) {
+    frm.doc.ar_city_ledger_invoice_payment_entry.forEach((pe) => {
+      if (pe.name !== child.name && pe.payment_amount) other_paid += flt(pe.payment_amount);
+    });
+  }
+
+  let allowed = total_amount - other_paid;
+  if (allowed < 0) allowed = 0.0;
+
+  let current_val = flt(child.payment_amount);
+
+  if (current_val > allowed) {
+    frappe.msgprint(
+      __("The amount paid exceeds the Outstanding. The amount has been adjusted to the remaining balance: {0}").format(allowed)
+    );
+
+    child.payment_amount = allowed;
+
+    if (parent_table_fieldname === "payments") {
+      frm.refresh_field("payments");
+    } else {
+      frm.refresh_field("ar_city_ledger_invoice_payment_entry");
+    }
+  }
+
+  calculate_payments(frm);
+}
+
 // helper flt to avoid depending on frappe.utils.flt in client scope
 function flt(val) {
   if (val === null || val === undefined || val === "") return 0.0;
+  if (typeof val === "string") {
+    val = val.replace(/,/g, "");
+  }
   val = Number(val);
   return isNaN(val) ? 0.0 : val;
 }
@@ -296,9 +387,13 @@ function autofill_payments_account(child) {
 }
 
 function make_payment_visibility(frm) {
+  // hide sb5 if new or if both payments & payment_entry are empty, or if Paid
   if (frm.doc.__islocal === 1) {
     frm.set_df_property("sb5", "hidden", 1);
-  } else if ( (frm.doc.payments && frm.doc.payments.length === 0) && ( !frm.doc.ar_city_ledger_invoice_payment_entry || frm.doc.ar_city_ledger_invoice_payment_entry.length === 0) ) {
+  } else if (
+    (frm.doc.payments && frm.doc.payments.length === 0) &&
+    (!frm.doc.ar_city_ledger_invoice_payment_entry || frm.doc.ar_city_ledger_invoice_payment_entry.length === 0)
+  ) {
     frm.set_df_property("sb5", "hidden", 1);
   } else if (frm.doc.status == "Paid") {
     frm.set_df_property("sb5", "hidden", 1);
@@ -316,14 +411,14 @@ function print_payment_receipt(frm, child) {
       doctype: "Inn Hotels Setting",
       fieldname: "ar_city_ledger_invoice_dp",
     },
-    callback: function(r) {
+    callback: function (r) {
       let print_format = (r.message && r.message.ar_city_ledger_invoice_dp) || "Standard";
-            frappe.set_route('print', 'AR City Ledger Invoice Payments', child.name, {
+      frappe.set_route("print", "AR City Ledger Invoice Payments", child.name, {
         print_format: print_format,
         no_letterhead: 0,
-        trigger_print: 1  
+        trigger_print: 1,
       });
-    }
+    },
   });
 }
 
@@ -334,48 +429,24 @@ function disable_form(frm) {
   frm.set_df_property("inn_channel", "read_only", 1);
   frm.set_df_property("inn_group", "read_only", 1);
   frm.set_df_property("customer_id", "read_only", 1);
-  frm.get_field("folio").grid.only_sortable();
-  frappe.meta.get_docfield(
-    "AR City Ledger Invoice Folio",
-    "folio_id",
-    frm.doc.name
-  ).read_only = 1;
-  frm.get_field("payments").grid.only_sortable();
-  frappe.meta.get_docfield(
-    "AR City Ledger Invoice Payments",
-    "payment_reference_date",
-    frm.doc.name
-  ).read_only = 1;
-  frappe.meta.get_docfield(
-    "AR City Ledger Invoice Payments",
-    "mode_of_payment",
-    frm.doc.name
-  ).read_only = 1;
-  frappe.meta.get_docfield(
-    "AR City Ledger Invoice Payments",
-    "payment_amount",
-    frm.doc.name
-  ).read_only = 1;
-  frappe.meta.get_docfield(
-    "AR City Ledger Invoice Payments",
-    "payment_reference_no",
-    frm.doc.name
-  ).read_only = 1;
-  frappe.meta.get_docfield(
-    "AR City Ledger Invoice Payments",
-    "payment_clearance_date",
-    frm.doc.name
-  ).read_only = 1;
-  frappe.meta.get_docfield(
-    "AR City Ledger Invoice Payment Entry",
-    "payment_entry_id",
-    frm.doc.name
-  ).read_only = 1;
-  frappe.meta.get_docfield(
-    "AR City Ledger Invoice Payment Entry",
-    "payment_amount",
-    frm.doc.name
-  ).read_only = 1;
+  if (frm.get_field("folio")) frm.get_field("folio").grid.only_sortable();
+  try {
+    frappe.meta.get_docfield("AR City Ledger Invoice Payments", "payment_reference_date", frm.doc.name).read_only = 1;
+    frappe.meta.get_docfield("AR City Ledger Invoice Payments", "mode_of_payment", frm.doc.name).read_only = 1;
+    frappe.meta.get_docfield("AR City Ledger Invoice Payments", "payment_amount", frm.doc.name).read_only = 1;
+    frappe.meta.get_docfield("AR City Ledger Invoice Payments", "payment_reference_no", frm.doc.name).read_only = 1;
+    frappe.meta.get_docfield("AR City Ledger Invoice Payments", "payment_clearance_date", frm.doc.name).read_only = 1;
+  } catch (e) {
+    // ignore if meta not present
+  }
+
+  // lock payment entry fields too
+  try {
+    frappe.meta.get_docfield("AR City Ledger Invoice Payment Entry", "payment_entry_id", frm.doc.name).read_only = 1;
+    frappe.meta.get_docfield("AR City Ledger Invoice Payment Entry", "payment_amount", frm.doc.name).read_only = 1;
+  } catch (e) {
+    // ignore if meta not present
+  }
 
   frm.set_intro("This AR City Ledger Invoice has been Paid.");
 }

@@ -18,7 +18,7 @@ class ARCityLedgerInvoice(Document):
         """
         self.validate_unique_folios_in_table()
         self.validate_folios_not_in_other_invoices()
-
+        self.validate_payment_totals_not_exceed()
     def validate_unique_folios_in_table(self):
         """
         Checks if there are any duplicate folios in the 'folio' child table
@@ -88,7 +88,37 @@ class ARCityLedgerInvoice(Document):
                     _("Folio '{0}' is already present in another AR City Ledger Invoice '{1}'. Please remove it from this document or cancel the conflicting invoice.").format(item.folio_id, conflicting_invoice_name),
                     title=_("Folio Already Used Error")
                 )
+    def validate_payment_totals_not_exceed(self):
+        """
+        Ensure sum(payments.payment_amount) + sum(payment_entry.payment_amount)
+        does not exceed total amount from folios.
+        """
+        # حساب إجمالي الفوليوهات
+        total_amount = 0.0
+        if getattr(self, "folio", None):
+            for f in self.folio:
+                if getattr(f, "amount", None):
+                    total_amount += flt(f.amount)
 
+        # حساب إجمالي الدفعات من جدول payments
+        total_paid = 0.0
+        if getattr(self, "payments", None):
+            for p in self.payments:
+                total_paid += flt(p.get("payment_amount", 0))
+
+        # حساب إجمالي الدفعات من جدول Payment Entry (اسم الحقل حسب DocType)
+        if getattr(self, "ar_city_ledger_invoice_payment_entry", None):
+            for pe in self.ar_city_ledger_invoice_payment_entry:
+                total_paid += flt(pe.get("payment_amount", 0))
+
+        # تحقق الفائض
+        if flt(total_paid) > flt(total_amount):
+            frappe.throw(
+                _("Total payments ({0}) exceed Total amount ({1}). Please correct payments so Outstanding is not negative.").format(
+                    total_paid, total_amount
+                ),
+                title=_("Overpayment Error")
+            )
 @frappe.whitelist()
 def get_payments_accounts(mode_of_payment):
     hotel_settings = frappe.get_single("Inn Hotels Setting")
