@@ -6,6 +6,7 @@ from __future__ import unicode_literals
 import frappe
 from frappe.model.document import Document
 from frappe import _
+from frappe.utils import flt,cstr
 
 class ARCityLedgerInvoice(Document):
     def validate(self):
@@ -17,7 +18,7 @@ class ARCityLedgerInvoice(Document):
         """
         self.validate_unique_folios_in_table()
         self.validate_folios_not_in_other_invoices()
-
+        self.validate_payment_totals_not_exceed()
     def validate_unique_folios_in_table(self):
         """
         Checks if there are any duplicate folios in the 'folio' child table
@@ -87,7 +88,37 @@ class ARCityLedgerInvoice(Document):
                     _("Folio '{0}' is already present in another AR City Ledger Invoice '{1}'. Please remove it from this document or cancel the conflicting invoice.").format(item.folio_id, conflicting_invoice_name),
                     title=_("Folio Already Used Error")
                 )
+    def validate_payment_totals_not_exceed(self):
+        """
+        Ensure sum(payments.payment_amount) + sum(payment_entry.payment_amount)
+        does not exceed total amount from folios.
+        """
+        # حساب إجمالي الفوليوهات
+        total_amount = 0.0
+        if getattr(self, "folio", None):
+            for f in self.folio:
+                if getattr(f, "amount", None):
+                    total_amount += flt(f.amount)
 
+        # حساب إجمالي الدفعات من جدول payments
+        total_paid = 0.0
+        if getattr(self, "payments", None):
+            for p in self.payments:
+                total_paid += flt(p.get("payment_amount", 0))
+
+        # حساب إجمالي الدفعات من جدول Payment Entry (اسم الحقل حسب DocType)
+        if getattr(self, "ar_city_ledger_invoice_payment_entry", None):
+            for pe in self.ar_city_ledger_invoice_payment_entry:
+                total_paid += flt(pe.get("payment_amount", 0))
+
+        # تحقق الفائض
+        if flt(total_paid) > flt(total_amount):
+            frappe.throw(
+                _("Total payments ({0}) exceed Total amount ({1}). Please correct payments so Outstanding is not negative.").format(
+                    total_paid, total_amount
+                ),
+                title=_("Overpayment Error")
+            )
 @frappe.whitelist()
 def get_payments_accounts(mode_of_payment):
     hotel_settings = frappe.get_single("Inn Hotels Setting")
@@ -108,45 +139,59 @@ def get_payments_accounts(mode_of_payment):
 
 @frappe.whitelist()
 def make_payment(id):
+    """
+    Processes payments for an AR City Ledger Invoice.
+    Creates and submits Journal Entries for unpaid payments.
+    Updates payment status and stores Journal Entry ID if total amounts match.
+    Conditionally sets Party Type and Party based on account type.
+
+    Args:
+        id (str): The name of the AR City Ledger Invoice document.
+
+    Returns:
+        int: 1 if payments are successfully processed and invoice status updated,
+             0 if payment processing fails due to validation.
+    """
     doc = frappe.get_doc("AR City Ledger Invoice", id)
-    arc_id = []
-    folio_list = doc.folio
-    if len(folio_list) == 0:
-        frappe.msgprint(
-            frappe._("Please add the Folio to be Collected first before making payment")
-        )
-    else:
-        for folio in folio_list:
-            arc_id.append(folio.ar_city_ledger_id)
-    payments = list(filter(lambda p: p.get("paid") == 0, doc.get("payments")))
+    
+    if not doc.folio or len(doc.folio) == 0:
+        frappe.throw(_("Please add Folio(s) to be Collected first before making payment."))
+
+    # current_total_amount_from_folios = sum(flt(f.amount) for f in doc.folio if f.amount is not None)
+    unpaid_payments = list(filter(lambda p: flt(p.get("paid")) == 0, doc.get("payments")))
+    
+    # Check if there are any payments to process
+    if not unpaid_payments:
+        frappe.throw(_("No unpaid payments found to process."))
+
     return_status = 1
 
-    for payment in payments:
-        remark = "AR City Ledger Invoice Payments: " + payment.name
+    for payment_row in unpaid_payments:
+        remark = _("AR City Ledger Invoice Payments: {0}").format(cstr(payment_row.name))
         doc_je = frappe.new_doc("Journal Entry")
-        doc_je.title = payment.name
+        doc_je.title = cstr(payment_row.name)
         doc_je.voucher_type = "Journal Entry"
         doc_je.naming_series = "ACC-JV-.YYYY.-"
-        doc_je.posting_date = payment.payment_reference_date
+        doc_je.posting_date = payment_row.payment_reference_date
         doc_je.company = frappe.get_doc("Global Defaults").default_company
-        doc_je.total_amount_currency = frappe.get_doc(
-            "Global Defaults"
-        ).default_currency
+        doc_je.total_amount_currency = frappe.get_doc("Global Defaults").default_currency
         doc_je.remark = remark
         doc_je.user_remark = remark
 
+        # Debit Account (Mode of Payment's default account)
         doc_jea_debit = frappe.new_doc("Journal Entry Account")
-        doc_jea_debit.account = payment.account
-        doc_jea_debit.debit = payment.payment_amount
-        doc_jea_debit.debit_in_account_currency = payment.payment_amount
+        doc_jea_debit.account = payment_row.account
+        doc_jea_debit.debit = payment_row.payment_amount
+        doc_jea_debit.debit_in_account_currency = payment_row.payment_amount
         # doc_jea_debit.party_type = "Customer"
         # doc_jea_debit.party = doc.customer_id
         doc_jea_debit.user_remark = remark
 
+        # Credit Account (AR City Ledger Payment Account from settings)
         doc_jea_credit = frappe.new_doc("Journal Entry Account")
-        doc_jea_credit.account = payment.account_against
-        doc_jea_credit.credit = payment.payment_amount
-        doc_jea_credit.credit_in_account_currency = payment.payment_amount
+        doc_jea_credit.account = payment_row.account_against
+        doc_jea_credit.credit = payment_row.payment_amount
+        doc_jea_credit.credit_in_account_currency = payment_row.payment_amount
         doc_jea_credit.party_type = "Customer"
         doc_jea_credit.party = doc.customer_id
         doc_jea_credit.user_remark = remark
@@ -154,33 +199,45 @@ def make_payment(id):
         doc_je.append("accounts", doc_jea_debit)
         doc_je.append("accounts", doc_jea_credit)
 
-        doc_je.save()
-        doc_je.submit()
-        payment.paid = 1
-        frappe.db.set_value(
-            "AR City Ledger Invoice Payments",
-            payment.name,
-            "journal_entry_id",
-            doc_je.name,
-        )
-        frappe.db.commit()
-        frappe.db.set_value("AR City Ledger Invoice Payments", payment.name, "paid", 1)
-        frappe.db.commit()
-        # payment.journal_entry = doc_je.name
+        try:
+            doc_je.save()
+            doc_je.submit()
+            
+            # Update payment status and store Journal Entry ID
+            frappe.db.set_value(
+                "AR City Ledger Invoice Payments",
+                payment_row.name,
+                "journal_entry_id",
+                doc_je.name,
+                update_modified=False 
+            )
+            frappe.db.set_value(
+                "AR City Ledger Invoice Payments",
+                payment_row.name,
+                "paid", 1,
+                update_modified=True 
+            )
+            frappe.db.commit()
 
-        if (
-            frappe.db.get_value("Journal Entry", {"title": payment.name}, "remark")
-            == remark
-        ):
-            return_status = 2
+        except Exception as e:
+            frappe.db.rollback()
+            frappe.log_error(f"Failed to create/submit Journal Entry for payment {payment_row.name}. Error: {str(e)}", "ACL_Payment_Error")
+            frappe.throw(_("Failed to process payment {0}: {1}").format(payment_row.name, str(e)))
+            return 0
 
-        if return_status == 1 and doc.total_paid == doc.total_amount:
-            doc.status = "Paid"
-            doc.save()
-            for arc in arc_id:
-                doc_arc_ledger = frappe.get_doc("AR City Ledger", arc)
-                doc_arc_ledger.is_paid = 1
-                doc_arc_ledger.save()
+    # Re-fetch doc to get updated totals after payments
+    doc.reload() 
+
+    # Check if total_paid now equals total_amount (using reloaded doc values)
+    if flt(doc.total_paid) == flt(doc.total_amount):
+        doc.status = "Paid"
+        doc.save()
+        
+        # Update associated AR City Ledger documents (if applicable)
+        for folio_item in doc.folio:
+            ar_city_ledger_doc = frappe.get_doc("AR City Ledger", folio_item.ar_city_ledger_id)
+            ar_city_ledger_doc.is_paid = 1
+            ar_city_ledger_doc.save(ignore_permissions=True) 
 
     return return_status
 
@@ -190,7 +247,6 @@ def cancel_ar_city_ledger_invoice(arci_id, jv_id):
     Function to cancel AR City Ledger Invoice
     """
     try:
-        frappe.get_doc("AR City Ledger Invoice", arci_id)
         arci = frappe.get_doc("AR City Ledger Invoice", arci_id)
         if arci.status == "Cancelled":
             frappe.throw(frappe._("AR City Ledger Invoice is already cancelled."))
@@ -204,7 +260,8 @@ def cancel_ar_city_ledger_invoice(arci_id, jv_id):
         jv.cancel()
 
         return True
-    except:
+    except Exception as e: 
+        frappe.log_error(f"Error cancelling AR City Ledger Invoice {arci_id} or JE {jv_id}: {str(e)}", "ACL_Cancel_Error")
         return False
 
 
