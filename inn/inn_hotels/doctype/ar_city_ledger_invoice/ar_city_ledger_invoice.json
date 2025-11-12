@@ -20,6 +20,7 @@
   "total_paid",
   "cb1",
   "outstanding",
+  "total_discount",
   "sb3",
   "folio",
   "sb4",
@@ -27,7 +28,10 @@
   "sb5",
   "make_payment",
   "section_break_brwp",
-  "ar_city_ledger_invoice_payment_entry"
+  "ar_city_ledger_invoice_payment_entry",
+  "discounts_section",
+  "ar_city_ledger_invoice_discounts",
+  "make_journal_entry__discount"
  ],
  "fields": [
   {
@@ -162,13 +166,36 @@
    "fieldtype": "Table",
    "label": "AR City Ledger Invoice Payment Entry",
    "options": "AR City Ledger Invoice Payment Entry"
+  },
+  {
+   "fieldname": "discounts_section",
+   "fieldtype": "Section Break",
+   "label": "Discounts"
+  },
+  {
+   "fieldname": "ar_city_ledger_invoice_discounts",
+   "fieldtype": "Table",
+   "label": "AR City Ledger Invoice Discounts",
+   "options": "AR City Ledger Invoice Discounts"
+  },
+  {
+   "fieldname": "make_journal_entry__discount",
+   "fieldtype": "Button",
+   "label": "Make Journal Entry  Discount"
+  },
+  {
+   "fieldname": "total_discount",
+   "fieldtype": "Currency",
+   "label": "Total Discount",
+   "read_only": 1
   }
  ],
  "links": [],
- "modified": "2025-10-29 22:16:26.790087",
+ "modified": "2025-11-12 21:11:55.140154",
  "modified_by": "Administrator",
  "module": "Inn Hotels",
  "name": "AR City Ledger Invoice",
+ "naming_rule": "By \"Naming Series\" field",
  "owner": "Administrator",
  "permissions": [
   {

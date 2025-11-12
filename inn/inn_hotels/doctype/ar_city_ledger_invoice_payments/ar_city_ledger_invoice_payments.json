@@ -17,7 +17,7 @@
   "account",
   "account_against",
   "journal_entry_id",
-  "print"
+  "print_payment"
  ],
  "fields": [
   {
@@ -103,16 +103,16 @@
    "read_only": 1
   },
   {
+   "columns": 1,
    "fieldname": "print_payment",
    "fieldtype": "Button",
-   "label": "Print Payment",
-   "columns": 1,
-   "in_list_view": 1
+   "in_list_view": 1,
+   "label": "Print Payment"
   }
  ],
  "istable": 1,
  "links": [],
- "modified": "2025-09-23 09:32:47.461339",
+ "modified": "2025-11-12 11:15:11.082482",
  "modified_by": "Administrator",
  "module": "Inn Hotels",
  "name": "AR City Ledger Invoice Payments",
@@ -120,6 +120,7 @@
  "owner": "Administrator",
  "permissions": [],
  "row_format": "Dynamic",
+ "rows_threshold_for_grid_search": 20,
  "sort_field": "modified",
  "sort_order": "DESC",
  "states": [],
