@@ -281,3 +281,115 @@ def get_arci_details_print(folios):
             }
         )
     return folio_list
+
+@frappe.whitelist()
+def get_payment_entry_remaining(payment_entry_id, current_arci=""):
+    """
+    Return remaining amount for a Payment Entry after excluding allocations recorded
+    in AR City Ledger Invoice Payment Entry (optionally excluding current ARCI).
+    Response dict:
+      { "pe_amount": float,
+        "total_allocated_excluding_current": float,
+        "remaining": float }
+    On error returns {"error": "<message>"}
+    """
+    if not payment_entry_id:
+        return {"error": _("Payment Entry id is required.")}
+
+    # Load full Payment Entry doc (safer across ERPNext versions)
+    try:
+        pe_doc = frappe.get_doc("Payment Entry", payment_entry_id)
+    except frappe.DoesNotExistError:
+        return {"error": _("Payment Entry {0} not found.").format(payment_entry_id)}
+    except Exception as e:
+        return {"error": _("Error loading Payment Entry {0}: {1}").format(payment_entry_id, cstr(e))}
+
+    # must be submitted
+    if getattr(pe_doc, "docstatus", 0) != 1:
+        return {"error": _("Payment Entry {0} is not submitted.").format(payment_entry_id)}
+
+    # must be Receive type
+    if (getattr(pe_doc, "payment_type", "") or "").lower() != "receive":
+        return {"error": _("Payment Entry {0} is not of type 'Receive'.").format(payment_entry_id)}
+
+    pe_amount = flt(getattr(pe_doc, "paid_amount", None)  or 0.0)
+
+    # compute total already allocated in AR City Ledger Invoice Payment Entry,
+    # excluding allocations that belong to the current ARCI (if provided)
+    try:
+        if current_arci:
+            sql = """SELECT COALESCE(SUM(payment_amount), 0) 
+                     FROM `tabAR City Ledger Invoice Payment Entry`
+                     WHERE payment_entry_id=%s AND parent != %s"""
+            total_allocated = flt(frappe.db.sql(sql, (payment_entry_id, current_arci))[0][0])
+        else:
+            sql = """SELECT COALESCE(SUM(payment_amount), 0) 
+                     FROM `tabAR City Ledger Invoice Payment Entry`
+                     WHERE payment_entry_id=%s"""
+            total_allocated = flt(frappe.db.sql(sql, (payment_entry_id,))[0][0])
+    except Exception as e:
+        return {"error": _("Failed to compute allocated amount for Payment Entry {0}: {1}").format(payment_entry_id, cstr(e))}
+
+    remaining = pe_amount - total_allocated
+    if remaining < 0:
+        remaining = 0.0
+
+    return {
+        "pe_amount": pe_amount,
+        "total_allocated_excluding_current": total_allocated,
+        "remaining": remaining
+    }
+
+
+
+@frappe.whitelist()
+def remove_payment_entry_links(payment_entry_id):
+    """
+    Removes all rows in AR City Ledger Invoice that reference the given payment_entry_id,
+    updates total_paid/outstanding and sets status from Paid->Unpaid if needed.
+    Returns list of updated AR City Ledger Invoice names.
+    """
+    updated = []
+    if not payment_entry_id:
+        return updated
+
+    # fetch all AR City Ledger Invoice parents that have such child rows
+    rows = frappe.db.sql("""
+        SELECT parent, name, payment_amount
+        FROM `tabAR City Ledger Invoice Payment Entry`
+        WHERE payment_entry_id = %s
+    """, (payment_entry_id,), as_dict=True)
+
+    parents = {}
+    for r in rows:
+        parent = r.parent
+        parents.setdefault(parent, []).append(r)
+
+    for parent_name, child_rows in parents.items():
+        try:
+            arci = frappe.get_doc("AR City Ledger Invoice", parent_name)
+            total_removed = flt(sum([flt(r.payment_amount) for r in child_rows]))
+
+            # remove rows referencing this payment_entry_id
+            remaining_rows = [r for r in (arci.get("ar_city_ledger_invoice_payment_entry") or []) if r.payment_entry_id != payment_entry_id]
+            arci.ar_city_ledger_invoice_payment_entry = remaining_rows
+
+            # update totals
+            arci.total_paid = flt(arci.total_paid) - total_removed
+            if arci.total_paid < 0:
+                arci.total_paid = 0.0
+
+            arci.outstanding = flt(arci.outstanding) + total_removed
+
+            # if it was Paid and now not fully paid, change to Unpaid
+            if arci.status == "Paid":
+                # recalc: if total_paid < total_amount => set Unpaid
+                if flt(arci.total_paid) < flt(arci.total_amount):
+                    arci.status = "Unpaid"
+
+            arci.save(ignore_permissions=True)
+            updated.append(parent_name)
+        except Exception as e:
+            frappe.log_error(f"Error while removing PE links from ARCI {parent_name} for PE {payment_entry_id}: {str(e)}", "ARCI_Remove_PE_Link_Error")
+
+    return updated
