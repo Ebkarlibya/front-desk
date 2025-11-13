@@ -59,6 +59,8 @@
   "breakfast_revenue_transaction_type",
   "customer_payment_transaction_type",
   "customer_room_payment_transaction_type",
+  "ar_city_ledger_invoice_setting_section",
+  "discount_account",
   "inn_pos_extended_section",
   "tax_name_pos_receipt",
   "pos_receipt_remarks",
@@ -875,13 +877,23 @@
    "fieldname": "ar_city_ledger_invoice_dp",
    "fieldtype": "Link",
    "label": "AR City Ledger Invoice Print Format",
-   "options": "Print Format",
-   "get_query": "inn.inn_hotels.doctype.inn_hotels_setting.inn_hotels_setting.get_query_for_ar_city_ledger_invoice_dp"
+   "options": "Print Format"
+  },
+  {
+   "fieldname": "ar_city_ledger_invoice_setting_section",
+   "fieldtype": "Section Break",
+   "label": "AR City Ledger Invoice Setting"
+  },
+  {
+   "fieldname": "discount_account",
+   "fieldtype": "Link",
+   "label": "Discount Account",
+   "options": "Account"
   }
  ],
  "issingle": 1,
  "links": [],
- "modified": "2025-09-21 11:38:32.373568",
+ "modified": "2025-11-12 10:38:24.066505",
  "modified_by": "Administrator",
  "module": "Inn Hotels",
  "name": "Inn Hotels Setting",
@@ -907,6 +919,7 @@
  ],
  "quick_entry": 1,
  "row_format": "Dynamic",
+ "rows_threshold_for_grid_search": 20,
  "sort_field": "modified",
  "sort_order": "DESC",
  "states": []

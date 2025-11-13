@@ -281,3 +281,310 @@ def get_arci_details_print(folios):
             }
         )
     return folio_list
+
+@frappe.whitelist()
+def get_payment_entry_remaining(payment_entry_id, current_arci=""):
+    """
+    Return remaining amount for a Payment Entry after excluding allocations recorded
+    in AR City Ledger Invoice Payment Entry (optionally excluding current ARCI).
+    Response dict:
+      { "pe_amount": float,
+        "total_allocated_excluding_current": float,
+        "remaining": float }
+    On error returns {"error": "<message>"}
+    """
+    if not payment_entry_id:
+        return {"error": _("Payment Entry id is required.")}
+
+    # Load full Payment Entry doc (safer across ERPNext versions)
+    try:
+        pe_doc = frappe.get_doc("Payment Entry", payment_entry_id)
+    except frappe.DoesNotExistError:
+        return {"error": _("Payment Entry {0} not found.").format(payment_entry_id)}
+    except Exception as e:
+        return {"error": _("Error loading Payment Entry {0}: {1}").format(payment_entry_id, cstr(e))}
+
+    # must be submitted
+    if getattr(pe_doc, "docstatus", 0) != 1:
+        return {"error": _("Payment Entry {0} is not submitted.").format(payment_entry_id)}
+
+    # must be Receive type
+    if (getattr(pe_doc, "payment_type", "") or "").lower() != "receive":
+        return {"error": _("Payment Entry {0} is not of type 'Receive'.").format(payment_entry_id)}
+
+    pe_amount = flt(getattr(pe_doc, "paid_amount", None)  or 0.0)
+
+    # compute total already allocated in AR City Ledger Invoice Payment Entry,
+    # excluding allocations that belong to the current ARCI (if provided)
+    try:
+        if current_arci:
+            sql = """SELECT COALESCE(SUM(payment_amount), 0) 
+                     FROM `tabAR City Ledger Invoice Payment Entry`
+                     WHERE payment_entry_id=%s AND parent != %s"""
+            total_allocated = flt(frappe.db.sql(sql, (payment_entry_id, current_arci))[0][0])
+        else:
+            sql = """SELECT COALESCE(SUM(payment_amount), 0) 
+                     FROM `tabAR City Ledger Invoice Payment Entry`
+                     WHERE payment_entry_id=%s"""
+            total_allocated = flt(frappe.db.sql(sql, (payment_entry_id,))[0][0])
+    except Exception as e:
+        return {"error": _("Failed to compute allocated amount for Payment Entry {0}: {1}").format(payment_entry_id, cstr(e))}
+
+    remaining = pe_amount - total_allocated
+    if remaining < 0:
+        remaining = 0.0
+
+    return {
+        "pe_amount": pe_amount,
+        "total_allocated_excluding_current": total_allocated,
+        "remaining": remaining
+    }
+
+
+
+@frappe.whitelist()
+def remove_payment_entry_links(payment_entry_id):
+    """
+    Removes all rows in AR City Ledger Invoice that reference the given payment_entry_id,
+    updates total_paid/outstanding and sets status from Paid->Unpaid if needed.
+    Returns list of updated AR City Ledger Invoice names.
+    """
+    updated = []
+    if not payment_entry_id:
+        return updated
+
+    # fetch all AR City Ledger Invoice parents that have such child rows
+    rows = frappe.db.sql("""
+        SELECT parent, name, payment_amount
+        FROM `tabAR City Ledger Invoice Payment Entry`
+        WHERE payment_entry_id = %s
+    """, (payment_entry_id,), as_dict=True)
+
+    parents = {}
+    for r in rows:
+        parent = r.parent
+        parents.setdefault(parent, []).append(r)
+
+    for parent_name, child_rows in parents.items():
+        try:
+            arci = frappe.get_doc("AR City Ledger Invoice", parent_name)
+            total_removed = flt(sum([flt(r.payment_amount) for r in child_rows]))
+
+            # remove rows referencing this payment_entry_id
+            remaining_rows = [r for r in (arci.get("ar_city_ledger_invoice_payment_entry") or []) if r.payment_entry_id != payment_entry_id]
+            arci.ar_city_ledger_invoice_payment_entry = remaining_rows
+
+            # update totals
+            arci.total_paid = flt(arci.total_paid) - total_removed
+            if arci.total_paid < 0:
+                arci.total_paid = 0.0
+
+            arci.outstanding = flt(arci.outstanding) + total_removed
+
+            # if it was Paid and now not fully paid, change to Unpaid
+            if arci.status == "Paid":
+                # recalc: if total_paid < total_amount => set Unpaid
+                if flt(arci.total_paid) < flt(arci.total_amount):
+                    arci.status = "Unpaid"
+
+            arci.save(ignore_permissions=True)
+            updated.append(parent_name)
+        except Exception as e:
+            frappe.log_error(f"Error while removing PE links from ARCI {parent_name} for PE {payment_entry_id}: {str(e)}", "ARCI_Remove_PE_Link_Error")
+
+    return updated
+
+@frappe.whitelist()
+def make_journal_entry__discount(arci_name):
+    """
+    Create Journal Entry for discounts in AR City Ledger Invoice.
+    - Sum all discount rows in AR City Ledger Invoice Discounts that are not yet linked to JE.
+    - Ensure total_discount <= outstanding (do not allow negative outstanding).
+    - Create and submit a Journal Entry:
+        Debit: Discount Account (from Inn Hotels Setting)
+        Credit: Customer Party Account (from Customer -> Party Account child table for company)
+    - Link journal_entry_id to each discount row used.
+    - Update total_discount, total_paid, outstanding on AR City Ledger Invoice.
+    Returns: {"journal_entry": je.name, "total_discount": total_discount}
+    """
+    if not arci_name:
+        frappe.throw(_("AR City Ledger Invoice id is required."))
+
+    arci = frappe.get_doc("AR City Ledger Invoice", arci_name)
+
+    if not arci.name:
+        frappe.throw(_("Please save AR City Ledger Invoice before creating discount Journal Entry."))
+
+    child_fieldname = "ar_city_ledger_invoice_discounts"
+    discounts = arci.get(child_fieldname) or []
+
+    # only rows not yet linked
+    discount_rows_to_use = [r for r in discounts if not r.get("journal_entry_id") and flt(r.get("payment_amount")) > 0]
+
+    if not discount_rows_to_use:
+        frappe.throw(_("No discount rows available to create Journal Entry."))
+
+    total_discount = flt(sum(flt(r.payment_amount) for r in discount_rows_to_use))
+
+    outstanding = flt(arci.outstanding)
+    if total_discount <= 0:
+        frappe.throw(_("Total discount must be greater than zero."))
+    if total_discount > outstanding:
+        frappe.throw(_("Total discount ({0}) exceeds the invoice outstanding ({1}).").format(total_discount, outstanding))
+
+    # get discount account
+    hotel_settings = frappe.get_single("Inn Hotels Setting")
+    discount_account = hotel_settings.get("discount_account")
+    if not discount_account:
+        frappe.throw(_("Please configure Discount Account in Inn Hotels Setting."))
+
+    company = frappe.get_doc("Global Defaults").default_company
+    customer = arci.customer_id
+    if not customer:
+        frappe.throw(_("AR City Ledger Invoice has no Contact Person (Customer)."))
+
+    # find Party Account row for this company
+    party_account = frappe.db.get_value("Party Account", {"parent": customer, "company": company}, "account")
+    if not party_account:
+        party_account = frappe.db.get_value("Party Account", {"parent": customer}, "account")
+    if not party_account:
+        frappe.throw(_("No Party Account found for Customer {0}. Please set Party Account under the Customer.").format(customer))
+
+    # create JE
+    je = frappe.new_doc("Journal Entry")
+    je.voucher_type = "Journal Entry"
+    je.posting_date = arci.issued_date or frappe.utils.nowdate()
+    je.company = company
+    je.title = _("Discount for {0}").format(arci.name)
+    je.remark = _("Discount applied from AR City Ledger Invoice {0}").format(arci.name)
+
+    je.append("accounts", {
+        "account": discount_account,
+        "debit": total_discount,
+        "credit": 0.0,
+        "debit_in_account_currency": total_discount,
+        "credit_in_account_currency": 0.0,
+        "user_remark": _("Discount for {0}").format(arci.name),
+    })
+
+    je.append("accounts", {
+        "account": party_account,
+        "credit": total_discount,
+        "debit": 0.0,
+        "credit_in_account_currency": total_discount,
+        "debit_in_account_currency": 0.0,
+        "party_type": "Customer",
+        "party": customer,
+        "user_remark": _("Discount applied to {0}").format(arci.name),
+    })
+
+    try:
+        je.insert(ignore_permissions=True)
+        je.submit()
+    except Exception as e:
+        frappe.log_error(message=cstr(e), title="Discount Journal Entry Creation Failed")
+        frappe.throw(_("Failed to create/submit Journal Entry for discount: {0}").format(cstr(e)))
+
+    # link rows in DB (single pass)
+    for r in discount_rows_to_use:
+        if r.get("name"):
+            frappe.db.set_value("AR City Ledger Invoice Discounts", r.name, "journal_entry_id", je.name, update_modified=False)
+
+    # Re-fetch parent and recompute totals deterministically from DB child tables
+    arci = frappe.get_doc("AR City Ledger Invoice", arci_name)
+
+    # compute total_paid from payments + payment_entry + applied discounts
+    total_paid = 0.0
+    for p in (arci.get("payments") or []):
+        total_paid += flt(p.get("payment_amount", 0))
+    for pe in (arci.get("ar_city_ledger_invoice_payment_entry") or []):
+        total_paid += flt(pe.get("payment_amount", 0))
+    # applied discounts = only rows with journal_entry_id
+    applied_discount_total = 0.0
+    for d in (arci.get("ar_city_ledger_invoice_discounts") or []):
+        if d.get("journal_entry_id"):
+            applied_discount_total += flt(d.get("payment_amount", 0))
+
+    total_paid = flt(total_paid) + flt(applied_discount_total)
+
+    # set fields on arci
+    arci.total_discount = flt(applied_discount_total)
+    arci.total_paid = flt(total_paid)
+    arci.outstanding = flt(arci.total_amount or 0.0) - flt(arci.total_paid)
+    if arci.outstanding < 0:
+        arci.outstanding = 0.0
+    if flt(arci.outstanding) == 0:
+        arci.status = "Paid"
+
+    arci.save(ignore_permissions=True)
+
+    return {"journal_entry": je.name, "total_discount": applied_discount_total}
+
+def on_journal_entry_cancel_discount(doc, method):
+    """
+    Hook to run when a Journal Entry is cancelled.
+    - Finds discount child rows linked to this Journal Entry
+    - Removes those child rows from their AR City Ledger Invoice
+    - Reverts total_paid / outstanding and status on the parent AR City Ledger Invoice
+    """
+    je_name = doc.name
+
+    # find all discount child rows referencing this JE
+    linked_rows = frappe.get_all(
+        "AR City Ledger Invoice Discounts",
+        filters={"journal_entry_id": je_name},
+        fields=["name", "parent", "payment_amount"]
+    )
+
+    if not linked_rows:
+        return
+
+    # group by parent invoice
+    parents = {}
+    for row in linked_rows:
+        parent = row.parent
+        parents.setdefault(parent, []).append(row)
+
+    for parent_name, rows in parents.items():
+        try:
+            arci = frappe.get_doc("AR City Ledger Invoice", parent_name)
+        except frappe.DoesNotExistError:
+            frappe.log_error(_("AR City Ledger Invoice {0} not found while cancelling JE {1}").format(parent_name, je_name))
+            continue
+
+        total_removed = 0.0
+        # remove rows from arci child table
+        # best to reload latest child rows and remove those with matching journal_entry_id
+        existing = arci.get("ar_city_ledger_invoice_discounts") or []
+        remaining = []
+        for r in existing:
+            if r.get("journal_entry_id") == je_name:
+                total_removed += flt(r.get("payment_amount") or 0.0)
+            else:
+                remaining.append(r)
+
+        # set remaining as new child list
+        arci.set("ar_city_ledger_invoice_discounts", remaining)
+
+        # revert totals
+        arci.total_paid = flt(arci.get("total_paid") or 0.0) - total_removed
+        if arci.total_paid < 0:
+            arci.total_paid = 0.0
+
+        arci.outstanding = flt(arci.get("total_amount") or 0.0) - flt(arci.total_paid)
+        if arci.outstanding < 0:
+            arci.outstanding = 0.0
+
+        # if invoice was Paid and now outstanding > 0, revert status
+        if arci.status == "Paid" and flt(arci.outstanding) > 0:
+            arci.status = "Unpaid"
+
+        # also reduce total_discount if present
+        if hasattr(arci, "total_discount"):
+            arci.total_discount = flt(arci.get("total_discount") or 0.0) - total_removed
+            if arci.total_discount < 0:
+                arci.total_discount = 0.0
+
+        arci.save(ignore_permissions=True)
+
+    # After successful removal, nothing else needed.

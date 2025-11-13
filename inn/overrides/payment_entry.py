@@ -1,35 +1,54 @@
+# /apps/inn/inn/overrides/payment_entry.py
+# -*- coding: utf-8 -*-
+# Copyright (c) 2020, Core Initiative and contributors
+# For license information, please see license.txt
+
 import frappe
 from frappe import _
-from frappe.utils import flt,cstr
+from frappe.utils import flt, cstr
 
+# ---------------------------------------------------------------------
+# Helper: determine canonical Payment Entry amount (safe across versions)
+# ---------------------------------------------------------------------
+def _get_payment_entry_effective_amount(pe_doc):
+    """
+    Determine canonical amount of a Payment Entry.
+    Preference order:
+      1) paid_amount
+      2) received_amount
+      3) base_received_amount
+      4) base_paid_amount
+      5) total_allocated_amount (fallback)
+      6) 0.0
+    """
+    return flt(
+        getattr(pe_doc, "paid_amount", None) or
+        getattr(pe_doc, "received_amount", None) or
+        getattr(pe_doc, "base_received_amount", None) or
+        getattr(pe_doc, "base_paid_amount", None) or
+        getattr(pe_doc, "total_allocated_amount", None) or
+        0.0
+    )
 
+# ---------------------------------------------------------------------
+# API: used by Payment Entry UI to fetch unpaid ARIs for a customer
+# ---------------------------------------------------------------------
 @frappe.whitelist()
 def get_unpaid_city_ledger_invoices(customer_id):
     """
-    Fetches all unpaid AR City Ledger Invoices for a given customer.
-
-    Args:
-        customer_id (str): The customer ID for whom to fetch invoices.
-
-    Returns:
-        list: A list of dictionaries, each representing an unpaid AR City Ledger Invoice.
+    Return unpaid AR City Ledger Invoices for a given customer.
     """
     if not customer_id:
         frappe.throw(_("Please select a Customer first."))
 
-    filters = {
-        "customer_id": customer_id,
-        "status": ("!=", "Paid"),
-    }
-
-    unpaid_invoices = frappe.get_list(
+    unpaid_invoices = frappe.get_all(
         "AR City Ledger Invoice",
-        filters=filters,
-        fields=[
-            "name",
-            "total_amount",
-            "outstanding",
-        ],
+        filters={
+            "customer_id": customer_id,
+            "status": ("!=", "Paid"),
+        },
+        fields=["name", "total_amount", "outstanding"],
+        order_by="modified desc",
     )
 
     result = []
@@ -37,133 +56,204 @@ def get_unpaid_city_ledger_invoices(customer_id):
         result.append({
             "reference_doctype": "AR City Ledger Invoice",
             "reference_name": invoice.name,
-            "total_amount": invoice.total_amount,
-            "outstanding_amount": invoice.outstanding,
+            "total_amount": flt(invoice.total_amount),
+            "outstanding_amount": flt(invoice.outstanding),
             "allocated_amount": 0.0,
         })
-    
+
     return result
 
+# ---------------------------------------------------------------------
+# Hook: Payment Entry on_submit
+# - Validate allocations provided in doc.custom_unpaid_city_ledger_invoice
+# - Apply allocations to AR City Ledger Invoice child table and update totals
+# ---------------------------------------------------------------------
 def on_payment_entry_submit_custom_logic(doc, method):
     """
-    DocEvent hook for Payment Entry's on_submit event.
-    This function processes custom AR City Ledger Invoice allocations.
-    It adds this Payment Entry's details to the 'ar_city_ledger_invoice_payment_entry'
-    child table in each relevant AR City Ledger Invoice.
-    Includes validation to prevent over-allocation (allocated_amount > outstanding_amount)
-    and to ensure total allocated amount exactly equals the Payment Entry's paid_amount.
-
-    Args:
-        doc (frappe.model.document.Document): The Payment Entry document being submitted.
-        method (str): The name of the hook method (e.g., 'on_submit').
+    Called on Payment Entry on_submit to allocate this Payment Entry to AR City Ledger Invoices.
+    Expects `doc.custom_unpaid_city_ledger_invoice` to contain rows with:
+      - reference_name (AR City Ledger Invoice)
+      - allocated_amount
     """
-    if not doc.custom_unpaid_city_ledger_invoice:
+    allocations = getattr(doc, "custom_unpaid_city_ledger_invoice", None)
+    if not allocations:
         return
-    sum_of_allocated_amounts = sum(flt(item.allocated_amount) for item in doc.custom_unpaid_city_ledger_invoice)
-    main_payment_entry_paid_amount = flt(doc.paid_amount)
 
-    if sum_of_allocated_amounts != main_payment_entry_paid_amount:
+    # Effective PE amount
+    pe_amount = flt(getattr(doc, "paid_amount", None) or 0.0)
+
+    # Sum of allocations provided by user
+    sum_allocated = flt(sum(flt(a.allocated_amount) for a in allocations))
+
+    # Validate total matches PE amount (strict equality expected by your spec)
+    if abs(sum_allocated - pe_amount) > 0.0001:
         frappe.throw(
-            _("Total allocated amount ({0}) must exactly match the Payment Entry's paid amount ({1}). Please adjust allocations.").format(
-                sum_of_allocated_amounts,
-               main_payment_entry_paid_amount
+            _("Total allocated amount ({0}) must exactly match the Payment Entry's amount ({1}).").format(
+                sum_allocated, pe_amount
             ),
             title=_("Allocation Mismatch Error")
         )
 
-    for invoice_item in doc.custom_unpaid_city_ledger_invoice:
-        if invoice_item.reference_name: # Only validate if a reference is selected
-            if flt(invoice_item.allocated_amount) > flt(invoice_item.outstanding_amount):
-                frappe.throw(
-                    _("Allocated amount ({0}) for AR City Ledger Invoice '{1}' cannot exceed its outstanding amount ({2}).").format(
-                       flt(invoice_item.allocated_amount),
-                        invoice_item.reference_name,
-                        flt(invoice_item.outstanding_amount)
-                    ),
-                    title=_("Over-allocation Error")
-                )
-    
-    for invoice_item in doc.custom_unpaid_city_ledger_invoice:
-        # Only process items with a positive allocated amount (and a valid reference, already checked)
-        if flt(invoice_item.allocated_amount) > 0 and invoice_item.reference_name:
-            try:
-                # Get the AR City Ledger Invoice document
-                arci_doc = frappe.get_doc("AR City Ledger Invoice", invoice_item.reference_name)
-                
-                # Add a new row to its 'ar_city_ledger_invoice_payment_entry' child table
-                new_payment_entry_ref = arci_doc.append("ar_city_ledger_invoice_payment_entry", {})
-                new_payment_entry_ref.payment_entry_id = doc.name # Link to current Payment Entry
-                new_payment_entry_ref.payment_amount = invoice_item.allocated_amount # Amount allocated from this PE
-                # Update AR City Ledger Invoice's total_paid and outstanding fields
-                # These fields are often read-only, but we can update them via a hook or directly here
-                arci_doc.total_paid = flt(arci_doc.total_paid) + flt(invoice_item.allocated_amount)
-                arci_doc.outstanding = flt(arci_doc.outstanding) - flt(invoice_item.allocated_amount)
-                arci_doc.save(ignore_permissions=True) # Save the AR City Ledger Invoice silently
-                
-            except frappe.DoesNotExistError:
-                frappe.log_error(
-                    _("AR City Ledger Invoice {0} not found for updating from Payment Entry {1}").format(invoice_item.reference_name, doc.name),
-                    _("AR City Ledger Update Error")
-                )
-            except Exception as e:
-                frappe.log_error(
-                    _("Error updating AR City Ledger Invoice {0} from Payment Entry {1}: {2}").format(invoice_item.reference_name, doc.name, cstr(e)),
-                    _("AR City Ledger Update Error")
-                )
+    # Validate each allocation against the invoice outstanding and system state
+    for a in allocations:
+        ref = a.get("reference_name")
+        amt = flt(a.get("allocated_amount") or 0)
+        if not ref:
+            frappe.throw(_("Allocation must reference an AR City Ledger Invoice."))
+        if amt <= 0:
+            frappe.throw(_("Allocated amount for {0} must be greater than zero.").format(ref))
 
+        try:
+            arci = frappe.get_doc("AR City Ledger Invoice", ref)
+        except frappe.DoesNotExistError:
+            frappe.throw(_("AR City Ledger Invoice {0} not found.").format(ref))
 
-def on_payment_entry_cancel_custom_logic(doc, method):
-    """
-    When canceling a Payment Entry: We undo everything we did during the approval process.
-        - We delete (or remove) the rows associated with the same payment_entry_id from the ar_city_ledger_invoice_payment_entry table in each referenced AR City Ledger Invoice.
-        - We deduct the total amounts deleted from the total_paid.
-        - We add the same amounts to the outstanding.
-        - We save the changes with the ignore permissions (ignore_permissions=True).
-    """
-    if not doc.custom_unpaid_city_ledger_invoice:
-        return
+        if flt(amt) > flt(arci.outstanding):
+            frappe.throw(
+                _("Allocated amount ({0}) for AR City Ledger Invoice '{1}' cannot exceed its outstanding amount ({2}).").format(
+                    amt, ref, flt(arci.outstanding)
+                ),
+                title=_("Over-allocation Error")
+            )
 
-    for invoice_item in doc.custom_unpaid_city_ledger_invoice:
-        if not invoice_item.reference_name or flt(invoice_item.allocated_amount) <= 0:
+    # Prevent double allocation: check existing DB-linked allocations for this PE
+    total_already_linked = flt(frappe.db.sql(
+        """SELECT COALESCE(SUM(payment_amount), 0)
+           FROM `tabAR City Ledger Invoice Payment Entry`
+           WHERE payment_entry_id = %s""",
+        (doc.name,)
+    )[0][0])
+
+    # If there are existing DB links and they conflict with new allocations, refuse
+    if total_already_linked:
+        # Typically should be zero before submit; but guard anyway
+        if abs(total_already_linked - sum_allocated) > 0.0001:
+            frappe.throw(
+                _("This Payment Entry already has existing allocations ({0}). Please reconcile before submitting new allocations.").format(total_already_linked),
+                title=_("Existing Allocation Conflict")
+            )
+
+    # All validations passed -> apply allocations
+    updated_invoices = []
+    for a in allocations:
+        ref = a.get("reference_name")
+        amt = flt(a.get("allocated_amount") or 0)
+        if not ref or amt <= 0:
             continue
 
         try:
-            arci_doc = frappe.get_doc("AR City Ledger Invoice", invoice_item.reference_name)
+            arci = frappe.get_doc("AR City Ledger Invoice", ref)
 
-            related_rows = [r for r in arci_doc.get("ar_city_ledger_invoice_payment_entry") or [] if r.payment_entry_id == doc.name]
-            if not related_rows:
-                frappe.log_error(
-                    _("No payment_entry reference found in AR City Ledger Invoice {0} for Payment Entry {1} during cancellation.").format(invoice_item.reference_name, doc.name),
-                    _("AR City Ledger Cancel Warning")
-                )
-                continue
+            # Protect against duplicate rows for same PE in same ARCI
+            existing_for_pe = flt(sum(flt(r.payment_amount or 0) for r in (arci.get("ar_city_ledger_invoice_payment_entry") or []) if r.get("payment_entry_id") == doc.name))
+            if existing_for_pe:
+                # if it already exists, ensure we are not over-allocating beyond PE effective amount
+                if existing_for_pe + amt - pe_amount > 0.0001:
+                    frappe.throw(
+                        _("Allocating {0} to AR City Ledger Invoice {1} would exceed Payment Entry {2} remaining amount.").format(
+                            amt, ref, doc.name
+                        ),
+                        title=_("Allocation Overrun")
+                    )
 
-            total_removed = sum(flt(r.payment_amount) for r in related_rows)
+            # Append new child row linking to Payment Entry
+            new_row = arci.append("ar_city_ledger_invoice_payment_entry", {})
+            new_row.payment_entry_id = doc.name
+            new_row.payment_amount = amt
 
-            remaining_rows = [r for r in arci_doc.get("ar_city_ledger_invoice_payment_entry") or [] if r.payment_entry_id != doc.name]
-            arci_doc.ar_city_ledger_invoice_payment_entry = remaining_rows
+            # Update totals
+            arci.total_paid = flt(arci.total_paid) + amt
+            arci.outstanding = flt(arci.outstanding) - amt
+            if arci.outstanding < 0:
+                arci.outstanding = 0.0
 
-            arci_doc.total_paid = flt(arci_doc.total_paid) - total_removed
+            # Update status
+            if flt(arci.total_paid) >= flt(arci.total_amount) - 0.0001:
+                arci.status = "Paid"
+            else:
+                arci.status = "Unpaid"
 
-            arci_doc.outstanding = flt(arci_doc.outstanding) + total_removed
+            arci.save(ignore_permissions=True)
+            updated_invoices.append(ref)
 
-            arci_doc.save(ignore_permissions=True)
-
-            if abs(flt(total_removed) - flt(invoice_item.allocated_amount)) > 0.005:
-                frappe.log_error(
-                    _("Mismatch during cancel for AR City Ledger Invoice {0} from Payment Entry {1}: expected to remove {2} but removed {3}.").format(
-                        invoice_item.reference_name, doc.name, flt(invoice_item.allocated_amount), flt(total_removed)
-                    ),
-                    _("AR City Ledger Cancel Amount Mismatch")
-                )
-
-        except frappe.DoesNotExistError:
-            frappe.log_error(
-                _("AR City Ledger Invoice {0} not found during cancellation of Payment Entry {1}").format(invoice_item.reference_name, doc.name),
-                _("AR City Ledger Cancel Error")
-            )
         except Exception as e:
             frappe.log_error(
-                _("Error while cancelling AR City Ledger Invoice {0} for Payment Entry {1}: {2}").format(invoice_item.reference_name, doc.name, cstr(e)),
-                _("AR City Ledger Cancel Error")
+                _("Error updating AR City Ledger Invoice {0} from Payment Entry {1}: {2}").format(ref, doc.name, cstr(e)),
+                _("AR City Ledger Update Error")
             )
+            # Raise to notify caller (so submission will fail)
+            frappe.throw(_("Failed to allocate Payment Entry {0} to AR City Ledger Invoice {1}: {2}").format(doc.name, ref, cstr(e)))
+
+    # optionally inform user
+    frappe.msgprint(_("Allocated Payment Entry {0} to AR City Ledger Invoices: {1}").format(doc.name, ", ".join(updated_invoices)))
+
+# ---------------------------------------------------------------------
+# Hook: Payment Entry on_cancel
+# - Remove all rows in AR City Ledger Invoice that reference this PE
+# - Update totals and status accordingly
+# ---------------------------------------------------------------------
+def on_payment_entry_cancel_custom_logic(doc, method):
+    """
+    Called on Payment Entry cancel to rollback allocations created at submit.
+    """
+    # Try to call centralized remover in ARCI module if exists
+    try:
+        remover = frappe.get_attr("inn.inn_hotels.doctype.ar_city_ledger_invoice.ar_city_ledger_invoice.remove_payment_entry_links")
+        try:
+            removed = remover(doc.name)
+            # If remover returns a list, optionally log it
+            if removed:
+                frappe.msgprint(_("Removed Payment Entry {0} allocations from AR City Ledger Invoices: {1}").format(doc.name, ", ".join(removed)))
+            return
+        except Exception:
+            # fallback to local removal if centralized function raises
+            pass
+    except Exception:
+        # centralized remover not present, perform local fallback
+        pass
+
+    # Local fallback removal:
+    try:
+        rows = frappe.db.sql("""
+            SELECT parent, name, payment_amount
+            FROM `tabAR City Ledger Invoice Payment Entry`
+            WHERE payment_entry_id = %s
+        """, (doc.name,), as_dict=True)
+
+        parents = {}
+        for r in rows:
+            parents.setdefault(r.parent, []).append(r)
+
+        updated = []
+        for parent_name, child_rows in parents.items():
+            try:
+                arci = frappe.get_doc("AR City Ledger Invoice", parent_name)
+                total_removed = flt(sum(flt(r.payment_amount) for r in child_rows))
+
+                # remove rows referencing this payment_entry_id
+                remaining_rows = [r for r in (arci.get("ar_city_ledger_invoice_payment_entry") or []) if r.get("payment_entry_id") != doc.name]
+                arci.ar_city_ledger_invoice_payment_entry = remaining_rows
+
+                # update totals
+                arci.total_paid = flt(arci.total_paid) - total_removed
+                if arci.total_paid < 0:
+                    arci.total_paid = 0.0
+
+                arci.outstanding = flt(arci.outstanding) + total_removed
+
+                # update status
+                if flt(arci.total_paid) < flt(arci.total_amount) - 0.0001:
+                    arci.status = "Unpaid"
+
+                arci.save(ignore_permissions=True)
+                updated.append(parent_name)
+            except Exception as e:
+                frappe.log_error(
+                    _("Error while removing PE links from ARCI {0} for PE {1}: {2}").format(parent_name, doc.name, cstr(e)),
+                    _("ARCI Remove PE Link Error")
+                )
+
+        if updated:
+            frappe.msgprint(_("Removed Payment Entry {0} allocations from AR City Ledger Invoices: {1}").format(doc.name, ", ".join(updated)))
+    except Exception as e:
+        frappe.log_error(_("Failed to cleanup AR City Ledger Invoice links for Payment Entry {0}: {1}").format(doc.name, cstr(e)), _("ARCI Cleanup Error"))

@@ -106,7 +106,10 @@ doc_events = {
         "on_submit": "inn.overrides.payment_entry.on_payment_entry_submit_custom_logic",
         "on_cancel": "inn.overrides.payment_entry.on_payment_entry_cancel_custom_logic",
 
-    },   
+    },
+    "Journal Entry": {
+        "on_cancel": "inn.inn_hotels.doctype.ar_city_ledger_invoice.ar_city_ledger_invoice.on_journal_entry_cancel_discount"
+    }       
 }
 
 # Scheduled Tasks

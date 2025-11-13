@@ -139,6 +139,8 @@ def process_dayend_close(doc_id):
                         doc_jea_debit = frappe.new_doc("Journal Entry Account")
                         doc_jea_debit.account = trx.debit_account
                         doc_jea_debit.debit = trx.amount
+                        # Adding cost center to journal entry account
+                        doc_jea_debit.cost_center = trx.cost_center
                         doc_jea_debit.debit_in_account_currency = trx.amount
                         doc_jea_debit.party_type, doc_jea_debit.party = (
                             _fill_party_account(doc_jea_debit.account, customer_name)
@@ -164,6 +166,8 @@ def process_dayend_close(doc_id):
                         doc_jea_credit.account = trx.credit_account
                         doc_jea_credit.credit = trx.amount
                         doc_jea_credit.credit_in_account_currency = trx.amount
+                        # Adding cost center to journal entry account
+                        doc_jea_credit.cost_center = trx.cost_center
                         doc_jea_credit.party_type, doc_jea_credit.party = (
                             _fill_party_account(doc_jea_credit.account, customer_name)
                         )
