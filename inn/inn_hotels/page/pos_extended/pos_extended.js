@@ -9,7 +9,7 @@ frappe.pages["pos-extended"].on_page_load = function (wrapper) {
   });
 
   page.add_menu_item(__("Change POS Profile"), () => dialog_pos_profile());
-
+  //
   function dialog_pos_profile() {
     me = this;
     let d = new frappe.ui.Dialog({
@@ -97,7 +97,7 @@ frappe.pages["pos-extended"].on_page_load = function (wrapper) {
                 query:
                   "erpnext.selling.page.point_of_sale.point_of_sale.item_group_query",
                 filters: {
-                  pos_profile: (me.frm && me.frm.doc) ? me.frm.doc.pos_profile : "",
+                  pos_profile: me.frm.doc ? me.frm.doc.pos_profile : "",
                 },
               };
             };
@@ -110,7 +110,7 @@ frappe.pages["pos-extended"].on_page_load = function (wrapper) {
       init_payments() {
         this.payment = new inn.PointOfSale.PosExtendedPayment({
           wrapper: this.$components_wrapper,
-          settings: this.settings,
+          // settings: this.settings,
           events: {
             get_frm: () => this.frm || {},
 
@@ -268,8 +268,8 @@ frappe.pages["pos-extended"].on_page_load = function (wrapper) {
           wrapper: this.$components_wrapper,
           settings: this.settings,
           events: {
-            get_frm: () => this.frm || { doc: {} },
-            // get_frm: () => this.frm,
+            // get_frm: () => this.frm || { doc: {} },
+            get_frm: () => this.frm,
 
             cart_item_clicked: (item) => {
               const item_row = this.get_item_from_frm(item);
