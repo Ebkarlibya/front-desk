@@ -25,6 +25,7 @@ web_include_css = "inn.bundle.css"
 doctype_js = {
     "Purchase Order": "public/js/purchase-order/purchase-order.js",
     "POS Closing Entry": "public/js/pos-closing-entry/pos-closing-entry.js",
+    "Payment Entry":"public/js/payment_entry.js"
 }
 # doctype_list_js = {"doctype" : "public/js/doctype_list.js"}
 # doctype_tree_js = {"doctype" : "public/js/doctype_tree.js"}
@@ -101,6 +102,14 @@ doc_events = {
     "Inn Folio Transaction": {
         "validate": "inn.inn_hotels.doctype.inn_folio_transaction.inn_folio_transaction.add_audit_date"
     },
+    "Payment Entry": {
+        "on_submit": "inn.overrides.payment_entry.on_payment_entry_submit_custom_logic",
+        "on_cancel": "inn.overrides.payment_entry.on_payment_entry_cancel_custom_logic",
+
+    },
+    "Journal Entry": {
+        "on_cancel": "inn.inn_hotels.doctype.ar_city_ledger_invoice.ar_city_ledger_invoice.on_journal_entry_cancel_discount"
+    }       
 }
 
 # Scheduled Tasks

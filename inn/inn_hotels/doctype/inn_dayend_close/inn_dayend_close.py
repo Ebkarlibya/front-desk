@@ -139,6 +139,8 @@ def process_dayend_close(doc_id):
                         doc_jea_debit = frappe.new_doc("Journal Entry Account")
                         doc_jea_debit.account = trx.debit_account
                         doc_jea_debit.debit = trx.amount
+                        # Adding cost center to journal entry account
+                        doc_jea_debit.cost_center = trx.cost_center
                         doc_jea_debit.debit_in_account_currency = trx.amount
                         doc_jea_debit.party_type, doc_jea_debit.party = (
                             _fill_party_account(doc_jea_debit.account, customer_name)
@@ -164,6 +166,8 @@ def process_dayend_close(doc_id):
                         doc_jea_credit.account = trx.credit_account
                         doc_jea_credit.credit = trx.amount
                         doc_jea_credit.credit_in_account_currency = trx.amount
+                        # Adding cost center to journal entry account
+                        doc_jea_credit.cost_center = trx.cost_center
                         doc_jea_credit.party_type, doc_jea_credit.party = (
                             _fill_party_account(doc_jea_credit.account, customer_name)
                         )
@@ -392,7 +396,7 @@ def get_ongoing_order_need_to_be_finished():
     return return_list
 
 
-def create_journal_entry(title, remark, debit_account, credit_account, amount):
+def create_journal_entry(title, remark, debit_account, credit_account, amount,cost_center=None):
     print("Journal Entry Title: " + title)
     customer_name = "Customer Restaurant"
     doc_je = frappe.new_doc("Journal Entry")
@@ -409,6 +413,7 @@ def create_journal_entry(title, remark, debit_account, credit_account, amount):
     doc_jea_debit.account = debit_account
     doc_jea_debit.debit = amount
     doc_jea_debit.debit_in_account_currency = amount
+    doc_jea_debit.cost_center = cost_center
     doc_jea_debit.party_type, doc_jea_debit.party = _fill_party_account(
         doc_jea_debit.account, customer_name
     )
@@ -418,6 +423,7 @@ def create_journal_entry(title, remark, debit_account, credit_account, amount):
     doc_jea_credit.account = credit_account
     doc_jea_credit.credit = amount
     doc_jea_credit.credit_in_account_currency = amount
+    doc_jea_credit.cost_center = cost_center
     doc_jea_credit.party_type, doc_jea_credit.party = _fill_party_account(
         doc_jea_credit.account, customer_name
     )
@@ -481,12 +487,18 @@ def create_je_for_inn_restaurant_finished_order(transaction_types):
             food_credit_account = frappe.get_doc(
                 "Inn Folio Transaction Type", transaction_types["restaurant_food"]
             ).credit_account
+            cost_center = frappe.db.get_value(
+                "Inn Folio Transaction Type",
+                transaction_types.get("restaurant_food"),
+                "cost_center",
+            )
             create_journal_entry(
                 food_title,
                 food_remark,
                 food_debit_account,
                 food_credit_account,
                 restaurant_food,
+                cost_center
             )
 
         if restaurant_beverage > 0:
@@ -501,12 +513,18 @@ def create_je_for_inn_restaurant_finished_order(transaction_types):
             bev_credit_account = frappe.get_doc(
                 "Inn Folio Transaction Type", transaction_types["restaurant_beverages"]
             ).credit_account
+            cost_center = frappe.db.get_value(
+                "Inn Folio Transaction Type",
+                transaction_types.get("restaurant_beverages"),
+                "cost_center",
+            )       
             create_journal_entry(
                 bev_title,
                 bev_remark,
                 bev_debit_account,
                 bev_credit_account,
                 restaurant_beverage,
+                cost_center
             )
         if restaurant_other > 0:
             print("entry Other Restaurant")
@@ -520,12 +538,18 @@ def create_je_for_inn_restaurant_finished_order(transaction_types):
             other_credit_account = frappe.get_doc(
                 "Inn Folio Transaction Type", transaction_types["restaurant_other"]
             ).credit_account
+            cost_center = frappe.db.get_value(
+                "Inn Folio Transaction Type",
+                transaction_types.get("restaurant_other"),
+                "cost_center",
+            )       
             create_journal_entry(
                 other_title,
                 other_remark,
                 other_debit_account,
                 other_credit_account,
                 restaurant_other,
+                cost_center
             )
 
         # Create Journal Entry for Round Off Charges
@@ -541,12 +565,18 @@ def create_je_for_inn_restaurant_finished_order(transaction_types):
             ro_credit_account = frappe.get_doc(
                 "Inn Folio Transaction Type", transaction_types["round_off"]
             ).credit_account
+            cost_center = frappe.db.get_value(
+                "Inn Folio Transaction Type",
+                transaction_types.get("round_off"),
+                "cost_center",
+            )              
             create_journal_entry(
                 ro_title,
                 ro_remark,
                 ro_debit_account,
                 ro_credit_account,
                 order.rounding_amount,
+                cost_center
             )
 
         # Create Journal Entry for Service
@@ -560,12 +590,18 @@ def create_je_for_inn_restaurant_finished_order(transaction_types):
         srv_credit_account = frappe.get_doc(
             "Inn Folio Transaction Type", transaction_types["fbs_service_10"]
         ).credit_account
+        cost_center = frappe.db.get_value(
+            "Inn Folio Transaction Type",
+            transaction_types.get("fbs_service_10"),
+            "cost_center",
+        )         
         create_journal_entry(
             service_title,
             service_remark,
             srv_debit_account,
             srv_credit_account,
             order.service_amount,
+            cost_center
         )
         # Create Journal Entry for Tax
         tax_title = "FBS -- Tax 11 %" + order.name
@@ -576,12 +612,18 @@ def create_je_for_inn_restaurant_finished_order(transaction_types):
         tax_credit_account = frappe.get_doc(
             "Inn Folio Transaction Type", transaction_types["fbs_tax_11"]
         ).credit_account
+        cost_center = frappe.db.get_value(
+            "Inn Folio Transaction Type",
+            transaction_types.get("fbs_tax_11"),
+            "cost_center",
+        )           
         create_journal_entry(
             tax_title,
             tax_remark,
             tax_debit_account,
             tax_credit_account,
             order.tax_amount,
+            cost_center
         )
 
         # 2. ORDER PAYMENT IN RESTAURANT FINISHED ORDER
