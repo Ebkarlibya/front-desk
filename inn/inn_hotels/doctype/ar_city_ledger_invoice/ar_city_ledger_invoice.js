@@ -107,8 +107,30 @@ frappe.ui.form.on("AR City Ledger Invoice", "ar_city_ledger_invoice_payment_entr
     calculate_payments(frm);
   }
 });
+
 frappe.ui.form.on("AR City Ledger Invoice", "ar_city_ledger_invoice_payment_entry_remove", function (frm) {
-  calculate_payments(frm);
+  setTimeout(function() {
+    calculate_payments(frm);
+
+    const total_paid = flt(frm.doc.total_paid || 0.0);
+    const total_amount = flt(frm.doc.total_amount || 0.0);
+    let new_status = (total_paid >= (total_amount - 0.000001) && total_amount > 0) ? "Paid" : "Unpaid";
+
+    if (frm.doc.status !== new_status) {
+      frm.set_value("status", new_status);
+    }
+
+    if (!frm.doc.__islocal) {
+      frm.save().then(() => {
+        frappe.show_alert(__("Totals updated"));
+      }).catch((err) => {
+        console.error("Failed to save ARCI after removing PE row:", err);
+        frappe.msgprint(__("Failed to persist changes after removing payment row. See console."));
+      });
+    } else {
+      frm.refresh_field();
+    }
+  }, 150);
 });
 
 // --------------------------- Child-level handlers ---------------------------
@@ -339,12 +361,33 @@ frappe.ui.form.on("AR City Ledger Invoice Payment Entry", {
     });
   },
 
-  payment_entry_add: function (frm) {
-    // nothing until user selects PE
+  before_ar_city_ledger_invoice_payment_entry_remove: function(frm, cdt, cdn) {
+
   },
 
-  payment_entry_remove: function (frm) {
-    calculate_payments(frm);
+  ar_city_ledger_invoice_payment_entry_remove: function(frm, cdt, cdn) {
+    setTimeout(function() {
+      calculate_payments(frm);
+
+      const total_paid = flt(frm.doc.total_paid || 0.0);
+      const total_amount = flt(frm.doc.total_amount || 0.0);
+      let new_status = (total_paid >= (total_amount - 0.000001) && total_amount > 0) ? "Paid" : "Unpaid";
+
+      if (frm.doc.status !== new_status) {
+        frm.set_value("status", new_status);
+      }
+
+      if (!frm.doc.__islocal) {
+        frm.save().then(() => {
+          frappe.show_alert(__("Totals updated"));
+        }).catch((err) => {
+          console.error("Failed to save after PE child remove:", err);
+          frappe.msgprint(__("Failed to persist changes after removing payment entry row. See console."));
+        });
+      } else {
+        frm.refresh_field();
+      }
+    }, 150);
   }
 });
 
