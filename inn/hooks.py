@@ -135,7 +135,13 @@ scheduler_events = {
 # Fixture
 # ---------
 
-fixtures = [{"doctype": "Custom Field", "filters": [["module", "=", "Inn Hotels"]]}]
+fixtures = [
+    {"doctype": "Custom Field", "filters": [["module", "=", "Inn Hotels"]]},
+    {
+        "doctype": "Role",
+        "filters": [["name", "=", "Hotel Customer Master"]],
+    },
+]
 
 
 # Testing

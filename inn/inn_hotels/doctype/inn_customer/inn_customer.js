@@ -3,6 +3,13 @@
 
 frappe.ui.form.on("Inn Customer", {
     refresh(frm) {
+        frm.set_query('customer_name', function(doc){
+            console.log('asdf')
+            return{
+                query: 'inn.inn_hotels.doctype.inn_customer.inn_customer.filter_customer_supplier',
+                txt: doc.customer_name
+            }
+        })
         fieldToggle(frm)
     },
     after_save(frm) {
