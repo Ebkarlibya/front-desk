@@ -317,6 +317,46 @@ def get_arci_details_print(folios):
     return folio_list
 
 
+def get_arci_outstanding(name):
+    """
+    Calculate ARCI outstanding by getting all GL transactions where 'against' field contains bank/cash accounts
+    and party matches the ARCI customer. Uses SQL for better performance. Returns: current_outstanding - sum(credit - debit)
+    """
+    doc = frappe.get_doc("AR City Ledger Invoice", name)
+
+    # Use SQL to get GL entries where 'against' field contains bank/cash accounts
+    # and party matches the ARCI customer for better targeting
+    gl_data = frappe.db.sql(
+        """
+        SELECT
+            gle.credit,
+            gle.debit,
+            gle.against
+        FROM `tabGL Entry` gle
+        INNER JOIN `tabAccount` acc ON (
+            FIND_IN_SET(acc.name, REPLACE(gle.against, ', ', ',')) > 0
+            AND acc.account_type IN ('Bank', 'Cash')
+        )
+        WHERE gle.against IS NOT NULL
+        AND gle.against != ''
+        AND gle.party = %s
+        AND gle.party_type = 'Customer'
+    """,
+        (doc.customer_id,),
+        as_dict=True,
+    )
+
+    # Calculate sum of (credit - debit) for bank/cash transactions
+    bank_cash_adjustment = 0.0
+    for entry in gl_data:
+        bank_cash_adjustment += flt(entry.credit) - flt(entry.debit)
+
+    # Return current outstanding minus the bank/cash adjustment
+    adjusted_outstanding = flt(doc.outstanding) - bank_cash_adjustment
+
+    return adjusted_outstanding
+
+
 @frappe.whitelist()
 def get_payment_entry_remaining(payment_entry_id, current_arci=""):
     """

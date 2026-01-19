@@ -25,7 +25,9 @@ class InnCustomer(Document):
             doc_sup.save()
             self.supplier_name = doc_sup.name
         except Exception as e:
-            frappe.log_error(f"Error creating supplier for Inn Customer:", message= str(e)})
+            frappe.log_error(
+                "Error creating supplier for Inn Customer:", message=str(e)
+            )
             frappe.throw("Failed to create associated supplier record")
 
     def after_delete(self, *args, **kwargs):
