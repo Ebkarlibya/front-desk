@@ -53,10 +53,11 @@ class InnReservation(Document):
         self.validate_room_booking()
 
     def validate_room_booking(self):
+        # try:
         filters = {
             "start": self.expected_arrival,
             "end": self.expected_departure,
-            "reference_name": self.name,
+            "reference_name": "new" if self.is_new() else self.name,
             "room_type": self.room_type,
             "bed_type": self.bed_type,
             "phase": "",
@@ -69,10 +70,16 @@ class InnReservation(Document):
         if self.room_id in rooms:
             frappe.throw("Room " + self.room_id + " is already booked in this period")
 
-        if self.actual_room_id and self.actual_room_id in rooms:
-            frappe.throw(
-                "Room " + self.actual_room_id + " is already booked in this period"
-            )
+        # if self.actual_room_id:
+        # if self.actual_room_id in rooms:
+        #     frappe.throw(
+        #         "Actual Room "
+        #         + self.actual_room_id
+        #         + " is already booked in this period"
+        #     )
+        # except Exception as e:
+        #     print(e)
+        #     pass
 
 
 # searches for leads which are not converted
@@ -394,7 +401,7 @@ def get_folio_url(reservation_id):
     folio_name = frappe.db.get_value(
         "Inn Folio", {"reservation_id": reservation_id}, ["name"]
     )
-    if folio_name == None:
+    if folio_name is None:
         create_folio(reservation_id)
         folio_name = frappe.db.get_value(
             "Inn Folio", {"reservation_id": reservation_id}, ["name"]
