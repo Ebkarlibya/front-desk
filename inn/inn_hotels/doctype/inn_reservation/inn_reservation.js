@@ -58,8 +58,9 @@ frappe.ui.form.on("Inn Reservation", {
     }
   },
   refresh: function (frm) {
-    frm.page.remove_menu_item(__('Duplicate'));
-
+    $('.menu-item-label:contains("Duplicate")')
+      .closest('li')
+      .hide();
     frm.set_query("customer_id", function () {
       return {
         query:

@@ -29,8 +29,6 @@ frappe.require(["point-of-sale.bundle.js", "inn-pos.bundle.js"], function () {
         render_payment_section() {
             const doc = this.events.get_frm().doc;
             const payments = doc.payments;
-            console.log(payments, 'paymentsasdfasdfasdf')
-            console.log(doc, 'docasdfasdfasdf')
             for (const p of payments) {
                 if (p.default) {
                     p.amount = flt(doc.total);
