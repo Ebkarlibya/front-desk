@@ -638,5 +638,28 @@ def prepare_se_items_from_invoice(invoice_doc_json: str) -> list:
 
     except json.JSONDecodeError:
         return []
-    except Exception as e:
+    except Exception:
         return []
+
+
+@frappe.whitelist()
+def folio_by_reservation(doctype, txt, searchfield, start, page_len, filters):
+    return frappe.db.sql(
+        """
+        SELECT f.name
+        FROM `tabInn Folio` f
+        JOIN `tabInn Reservation` r
+          ON r.name = f.reservation_id
+        WHERE
+          f.status = 'Open'
+          AND r.status = %(reservation_status)s
+          AND f.name LIKE %(txt)s
+        LIMIT %(start)s, %(page_len)s
+    """,
+        {
+            "reservation_status": filters.get("reservation_status"),
+            "txt": f"%{txt}%",
+            "start": start,
+            "page_len": page_len,
+        },
+    )

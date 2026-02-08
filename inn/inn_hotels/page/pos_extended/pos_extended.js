@@ -420,9 +420,10 @@ frappe.pages["pos-extended"].on_page_load = function (wrapper) {
               reqd: 1,
               get_query() {
                 return {
+                  query: "inn.inn_hotels.page.pos_extended.pos_extended.folio_by_reservation",
                   filters: {
-                    status: "Open",
-                  },
+                    reservation_status: "In House"
+                  }
                 };
               },
             },

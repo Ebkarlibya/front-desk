@@ -146,7 +146,7 @@ def update_by_reservation(reservation_id):
                 reservation_changed = True
                 room_booking_doc.room_id = reservation_doc.room_id
             if (
-                reservation_doc.actual_room_id is None
+                reservation_doc.actual_room_id
                 and reservation_doc.actual_room_id != room_booking_doc.room_id
             ):
                 # will use the actual usage of room regards less of reserved room, because actual room takes precedence over a reservation room
