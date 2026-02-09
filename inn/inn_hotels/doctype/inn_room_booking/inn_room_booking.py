@@ -263,7 +263,7 @@ def get_room_book_list(filters):
         frappe.db.sql(
             "select irb.room_id from `tabInn Room Booking` as irb "
             "where irb.reference_name != %s "
-            "and irb.status = 'Booked' "
+            "and irb.status in ('Booked', 'Stayed') "
             "and irb.room_availability = 'Room Sold' "
             "and irb.start != irb.end "
             "and ((%s >= irb.start and %s < irb.end) "
