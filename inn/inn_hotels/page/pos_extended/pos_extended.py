@@ -646,7 +646,7 @@ def prepare_se_items_from_invoice(invoice_doc_json: str) -> list:
 def folio_by_reservation(doctype, txt, searchfield, start, page_len, filters):
     return frappe.db.sql(
         """
-        SELECT f.name
+        SELECT f.name, r.room_id
         FROM `tabInn Folio` f
         JOIN `tabInn Reservation` r
           ON r.name = f.reservation_id
