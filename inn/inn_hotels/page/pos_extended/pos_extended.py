@@ -644,17 +644,17 @@ def prepare_se_items_from_invoice(invoice_doc_json: str) -> list:
 
 @frappe.whitelist()
 def folio_by_reservation(doctype, txt, searchfield, start, page_len, filters):
-    print(doctype, txt, searchfield, start, page_len, filters)
+    """Search folios by room number (actual_room_id) or customer name (customer_id)."""
     return frappe.db.sql(
         """
-        SELECT f.name, r.actual_room_id
+        SELECT f.name, r.actual_room_id, r.customer_id
         FROM `tabInn Folio` f
         JOIN `tabInn Reservation` r
           ON r.name = f.reservation_id
         WHERE
           f.status = 'Open'
           AND r.status = %(reservation_status)s
-          AND r.actual_room_id LIKE %(txt)s
+          AND (r.actual_room_id LIKE %(txt)s OR r.customer_id LIKE %(txt)s)
         LIMIT %(start)s, %(page_len)s
     """,
         {
