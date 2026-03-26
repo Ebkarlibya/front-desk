@@ -217,28 +217,66 @@ def calculate_opening_balances_per_customer(filters):
 def apply_special_rules(entries):
     """
     Applies business-specific logic:
-    - Removes entries with 'close', 'دفع', or 'اجل' in remarks.
-    - If both accounts containing '1310' and '1311' exist in a voucher, skip the voucher.
+    - If the voucher_no is in journal_entry_ids linked to Inn Folio (closed/voided/city-ledger), skip it.
+    - If count_1310 > 1 or a customer party appears more than once in a voucher, skip it.
     """
+    from collections import Counter
+
     result = []
     grouped_by_voucher = {}
+    customers = []
+    journal_entry_ids = []
 
     for entry in entries:
         key = (entry.voucher_type, entry.voucher_no)
         grouped_by_voucher.setdefault(key, []).append(entry)
+        if entry.party and entry.party not in customers:
+            customers.append(entry.party)
+
+    for customer in customers:
+        mode_of_payment = frappe.get_single(
+            "Inn Hotels Setting"
+        ).city_ledger_mode_of_payment
+        folio_sql = f"""
+                SELECT inf.name AS folio, inf.journal_entry_id_closed AS journal_entry_id, 'Closed' AS entry_type
+                FROM `tabInn Folio` inf
+                WHERE inf.customer_id = {frappe.db.escape(customer)}
+                AND inf.journal_entry_id_closed IS NOT NULL
+
+                UNION ALL
+
+                SELECT inf.name AS folio, inft.journal_entry_id, 'Transaction' AS entry_type
+                FROM `tabInn Folio` inf
+                INNER JOIN `tabInn Folio Transaction` inft ON inf.name = inft.parent
+                WHERE inf.customer_id = {frappe.db.escape(customer)} AND inft.mode_of_payment = {frappe.db.escape(mode_of_payment)}
+
+                UNION ALL
+
+                SELECT inf.name AS folio, inft.journal_entry_id, 'Transaction' AS entry_type
+                FROM `tabInn Folio` inf
+                INNER JOIN `tabInn Folio Transaction` inft ON inf.name = inft.parent
+                WHERE inf.customer_id = {frappe.db.escape(customer)} AND inft.is_void = 1
+            """
+        folio_jv = frappe.db.sql(folio_sql, as_dict=True)
+        journal_entry_ids += [
+            row.journal_entry_id for row in folio_jv if row.journal_entry_id
+        ]
 
     for key, entry_list in grouped_by_voucher.items():
-        if any("close" in (e.remarks or "").lower() or "دفع" in (e.remarks or "").lower() or "اجل" in (e.remarks or "").lower() for e in entry_list):
+        if key[1] in journal_entry_ids:
             continue
 
         accounts = [e.account for e in entry_list]
-        has_1310 = any("1310" in account for account in accounts)
-        has_1311 = any("1311" in account for account in accounts)
+        parties = [e.party for e in entry_list]
+        party_counts = Counter(parties)
 
-        if has_1310 and has_1311:
+        has_duplicate_party = any(count > 1 for count in party_counts.values())
+        count_1310 = sum("1310" in account for account in accounts)
+
+        if count_1310 > 1 or has_duplicate_party:
             continue
-        else:
-            result += entry_list
+
+        result += entry_list
 
     return result
 

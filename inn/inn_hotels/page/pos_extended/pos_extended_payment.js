@@ -30,11 +30,13 @@ frappe.require(["point-of-sale.bundle.js", "inn-pos.bundle.js"], function () {
             const doc = this.events.get_frm().doc;
             const payments = doc.payments;
             for (const p of payments) {
+                if (p.default) {
+                    p.amount = flt(doc.total);
+                }
                 frappe.model
-                    .set_value(p.doctype, p.name, 'amount', 0)
+                    .set_value(p.doctype, p.name, 'amount', p.amount)
                     .then(() => this.update_totals_section())
             }
-
 
             this.render_payment_mode_dom();
             this.make_invoice_fields_control();
