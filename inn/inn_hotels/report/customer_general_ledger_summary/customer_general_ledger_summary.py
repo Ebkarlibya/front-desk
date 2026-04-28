@@ -225,18 +225,22 @@ def apply_special_rules(entries):
     result = []
     grouped_by_voucher = {}
     customers = []
-    journal_entry_ids = []
+    customer_journal_entry_ids = {}
 
     for entry in entries:
-        key = (entry.voucher_type, entry.voucher_no)
+        # Group by voucher AND party to ensure rules are evaluated per-customer
+        key = (entry.voucher_type, entry.voucher_no, entry.party)
         grouped_by_voucher.setdefault(key, []).append(entry)
         if entry.party and entry.party not in customers:
             customers.append(entry.party)
 
-    for customer in customers:
+    # Fetch mode of payment once
+    if customers:
         mode_of_payment = frappe.get_single(
             "Inn Hotels Setting"
         ).city_ledger_mode_of_payment
+
+    for customer in customers:
         folio_sql = f"""
                 SELECT inf.name AS folio, inf.journal_entry_id_closed AS journal_entry_id, 'Closed' AS entry_type
                 FROM `tabInn Folio` inf
@@ -258,12 +262,15 @@ def apply_special_rules(entries):
                 WHERE inf.customer_id = {frappe.db.escape(customer)} AND inft.is_void = 1
             """
         folio_jv = frappe.db.sql(folio_sql, as_dict=True)
-        journal_entry_ids += [
+        customer_journal_entry_ids[customer] = [
             row.journal_entry_id for row in folio_jv if row.journal_entry_id
         ]
 
     for key, entry_list in grouped_by_voucher.items():
-        if key[1] in journal_entry_ids:
+        voucher_type, voucher_no, party = key
+        
+        # Skip if voucher is linked to this specific customer's folios
+        if voucher_no in customer_journal_entry_ids.get(party, []):
             continue
 
         accounts = [e.account for e in entry_list]
