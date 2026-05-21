@@ -2,6 +2,8 @@ import json
 import frappe
 from frappe import _
 from frappe.utils import flt, get_datetime
+from frappe.utils.print_utils import get_print
+from frappe.utils.file_manager import save_file
 
 PRINT_STATUS_DRAFT = 0
 PRINT_STATUS_CAPTAIN = 1
@@ -491,6 +493,10 @@ def transfer_charge_to_customer(
 
         je.flags.ignore_mandatory = True
         je.submit()
+
+        # إرفاق PDF الفاتورة بالقيد اليومية
+        _attach_invoice_pdf_to_journal_entry(je.name, invoice_name)
+
         se_items_list = prepare_se_items_from_invoice(cart_data)
         create_material_issue_from_pos(pos_profile_name, se_items_list)
         return {"status": "success", "journal_entry": je.name}
@@ -498,6 +504,45 @@ def transfer_charge_to_customer(
     except Exception as e:
         frappe.log_error(frappe.get_traceback(), "transfer_charge_to_customer Error")
         return {"status": "error", "error": str(e)}
+
+
+def _attach_invoice_pdf_to_journal_entry(je_name: str, invoice_name: str) -> None:
+    try:
+        print_format_name = frappe.db.get_single_value(
+            "Inn Hotels Setting", "customer_journal_entry_pdf"
+        )
+        if not print_format_name:
+            frappe.msgprint(
+                _("customer_journal_entry_pdf not configured in Inn Hotels Setting.")
+            )
+            frappe.log_error(
+                f"customer_journal_entry_pdf not configured in Inn Hotels Setting. "
+                f"No PDF attached to Journal Entry {je_name}.",
+                "JE PDF Attachment — Missing Config",
+            )
+            return
+
+        pdf_content = get_print(
+            doctype="POS Invoice",
+            name=invoice_name,
+            print_format=print_format_name,
+            as_pdf=True,
+        )
+
+        file_name = f"Charge-{invoice_name}.pdf"
+        save_file(
+            fname=file_name,
+            content=pdf_content,
+            dt="Journal Entry",
+            dn=je_name,
+            is_private=1,
+        )
+
+    except Exception:
+        frappe.log_error(
+            frappe.get_traceback(),
+            f"JE PDF Attachment Failed — JE: {je_name}, Invoice: {invoice_name}",
+        )
 
 
 def create_material_issue_from_pos(pos_profile_name, items_list, folio_name=None):
