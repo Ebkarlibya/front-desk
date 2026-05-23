@@ -494,7 +494,6 @@ def transfer_charge_to_customer(
         je.flags.ignore_mandatory = True
         je.submit()
 
-        # إرفاق PDF الفاتورة بالقيد اليومية
         _attach_invoice_pdf_to_journal_entry(je.name, invoice_name)
 
         se_items_list = prepare_se_items_from_invoice(cart_data)
