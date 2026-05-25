@@ -334,52 +334,56 @@ frappe.pages["pos-extended"].on_page_load = function (wrapper) {
           primary_action_label: __("Transfer Charge"),
           primary_action(values) {
             d.hide();
-            frappe.call({
-              method:
-                "inn.inn_hotels.page.pos_extended.pos_extended.transfer_charge_to_customer",
-              args: {
-                cart_data_str: JSON.stringify(frm_doc),
-                paying_customer: values.paying_customer,
-                original_customer: frm_doc.customer,
-                pos_profile_name: frm_doc.pos_profile,
-              },
-              freeze: true,
-              freeze_message: __("Processing charge transfer..."),
-              callback: function (r) {
-                if (r.message && r.message.status === "success") {
-                  frappe.show_alert({
-                    message: __(
-                      "Charge transferred successfully to {0}. Journal Entry: {1}",
-                      [values.paying_customer, r.message.journal_entry]
-                    ),
-                    indicator: "green",
-                  });
+            const paying_customer = values.paying_customer;
 
-                  me.make_new_invoice();
-                } else {
+            me.frm.save().then(() => {
+              frappe.call({
+                method:
+                  "inn.inn_hotels.page.pos_extended.pos_extended.transfer_charge_to_customer",
+                args: {
+                  cart_data_str: JSON.stringify(me.frm.doc),
+                  paying_customer: paying_customer,
+                  original_customer: me.frm.doc.customer,
+                  pos_profile_name: me.frm.doc.pos_profile,
+                },
+                freeze: true,
+                freeze_message: __("Processing charge transfer..."),
+                callback: function (r) {
+                  if (r.message && r.message.status === "success") {
+                    frappe.show_alert({
+                      message: __(
+                        "Charge transferred successfully to {0}. Journal Entry: {1}",
+                        [paying_customer, r.message.journal_entry]
+                      ),
+                      indicator: "green",
+                    });
+
+                    me.make_new_invoice();
+                  } else {
+                    frappe.msgprint({
+                      title: __("Error"),
+                      indicator: "red",
+                      message:
+                        r.message && r.message.error
+                          ? r.message.error
+                          : __("Failed to transfer charge."),
+                    });
+                  }
+                },
+                error: function (err) {
                   frappe.msgprint({
                     title: __("Error"),
                     indicator: "red",
-                    message:
-                      r.message && r.message.error
-                        ? r.message.error
-                        : __("Failed to transfer charge."),
+                    message: __(
+                      "An unexpected error occurred. Check console for details."
+                    ),
                   });
-                }
-              },
-              error: function (err) {
-                frappe.msgprint({
-                  title: __("Error"),
-                  indicator: "red",
-                  message: __(
-                    "An unexpected error occurred. Check console for details."
-                  ),
-                });
-                console.error(
-                  "Error in Python transfer_charge_to_customer call:",
-                  err
-                );
-              },
+                  console.error(
+                    "Error in Python transfer_charge_to_customer call:",
+                    err
+                  );
+                },
+              });
             });
           },
         });

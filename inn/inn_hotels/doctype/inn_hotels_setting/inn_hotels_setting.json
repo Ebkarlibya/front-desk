@@ -134,7 +134,9 @@
   "column_break_njmm",
   "cashier_report",
   "ar_city_ledger_default_print_format_section",
-  "ar_city_ledger_invoice_dp"
+  "ar_city_ledger_invoice_dp",
+  "point_of_sales_extended_section",
+  "customer_journal_entry_pdf"
  ],
  "fields": [
   {
@@ -889,11 +891,23 @@
    "fieldtype": "Link",
    "label": "Discount Account",
    "options": "Account"
+  },
+  {
+   "fieldname": "customer_journal_entry_pdf",
+   "fieldtype": "Link",
+   "label": "Customer Journal Entry PDF",
+   "link_filters": "[[\"Print Format\",\"doc_type\",\"=\",\"POS Invoice\"]]",
+   "options": "Print Format"
+  },
+  {
+   "fieldname": "point_of_sales_extended_section",
+   "fieldtype": "Section Break",
+   "label": "Point of Sales Extended"
   }
  ],
  "issingle": 1,
  "links": [],
- "modified": "2025-11-12 10:38:24.066505",
+ "modified": "2026-05-21 12:34:47.901566",
  "modified_by": "Administrator",
  "module": "Inn Hotels",
  "name": "Inn Hotels Setting",

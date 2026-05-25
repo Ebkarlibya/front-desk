@@ -25,7 +25,7 @@ web_include_css = "inn.bundle.css"
 doctype_js = {
     "Purchase Order": "public/js/purchase-order/purchase-order.js",
     "POS Closing Entry": "public/js/pos-closing-entry/pos-closing-entry.js",
-    "Payment Entry":"public/js/payment_entry.js"
+    "Payment Entry": "public/js/payment_entry.js",
 }
 # doctype_list_js = {"doctype" : "public/js/doctype_list.js"}
 # doctype_tree_js = {"doctype" : "public/js/doctype_tree.js"}
@@ -103,13 +103,12 @@ doc_events = {
         "validate": "inn.inn_hotels.doctype.inn_folio_transaction.inn_folio_transaction.add_audit_date"
     },
     "Payment Entry": {
-        "on_submit": "inn.overrides.payment_entry.on_payment_entry_submit_custom_logic",
+        "on_submit": "inn.overrides.payment_entry.validate_payment_entry_allocation_balance",
         "on_cancel": "inn.overrides.payment_entry.on_payment_entry_cancel_custom_logic",
-
     },
     "Journal Entry": {
         "on_cancel": "inn.inn_hotels.doctype.ar_city_ledger_invoice.ar_city_ledger_invoice.on_journal_entry_cancel_discount"
-    }       
+    },
 }
 
 # Scheduled Tasks
@@ -136,7 +135,13 @@ scheduler_events = {
 # Fixture
 # ---------
 
-fixtures = [{"doctype": "Custom Field", "filters": [["module", "=", "Inn Hotels"]]}]
+fixtures = [
+    {"doctype": "Custom Field", "filters": [["module", "=", "Inn Hotels"]]},
+    {
+        "doctype": "Role",
+        "filters": [["name", "=", "Hotel Customer Master"]],
+    },
+]
 
 
 # Testing
@@ -159,6 +164,7 @@ jinja = {
         "inn.inn_hotels.page.pos_extended.pos_extended.get_table_number",
         "inn.inn_hotels.doctype.inn_pos_usage.inn_extended_bill.extended_bil_extra_data",
         "inn.inn_hotels.doctype.ar_city_ledger_invoice.ar_city_ledger_invoice.get_arci_details_print",
+        "inn.inn_hotels.doctype.ar_city_ledger_invoice.ar_city_ledger_invoice.get_arci_outstanding",
     ]
 }
 
