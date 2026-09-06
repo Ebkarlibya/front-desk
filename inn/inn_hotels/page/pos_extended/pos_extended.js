@@ -107,6 +107,23 @@ frappe.pages["pos-extended"].on_page_load = function (wrapper) {
         });
       }
 
+      init_item_selector() {
+        super.init_item_selector();
+        const me = this;
+        this.item_selector.get_items = function ({ start = 0, page_length = 40, search_term = "" } = {}) {
+          const doc = me.frm ? me.frm.doc : null;
+          const price_list = (doc && doc.selling_price_list) || this.price_list;
+          let { item_group, pos_profile } = this;
+
+          !item_group && (item_group = this.parent_item_group);
+
+          return frappe.call({
+            method: "inn.helper.pos_pricing.get_items",
+            args: { start, page_length, price_list, item_group, search_term, pos_profile },
+          });
+        };
+      }
+
       init_payments() {
         this.payment = new inn.PointOfSale.PosExtendedPayment({
           wrapper: this.$components_wrapper,
@@ -283,9 +300,13 @@ frappe.pages["pos-extended"].on_page_load = function (wrapper) {
 
             edit_cart: () => this.payment.edit_cart(),
 
-            customer_details_updated: (details) => {
+            customer_details_updated: async (details) => {
               this.customer_details = details;
               this.payment.render_loyalty_points_payment_mode();
+
+              const customer_name =
+                (details && details.customer) || this.frm.doc.customer || "";
+              await this.apply_customer_and_price_list_to_invoice(customer_name);
             },
 
             print_captain_order: () => this.print_captain_order(),
@@ -298,6 +319,82 @@ frappe.pages["pos-extended"].on_page_load = function (wrapper) {
           },
         });
       }
+
+      async apply_customer_and_price_list_to_invoice(customer_name, target_price_list) {
+        const me = this;
+        if (customer_name !== undefined) {
+          me.frm.doc.customer = customer_name;
+        }
+
+        if (!target_price_list) {
+          const res = await frappe.call({
+            method: "inn.helper.pos_pricing.get_resolved_price_list",
+            args: {
+              customer: customer_name,
+              pos_profile: me.frm.doc ? me.frm.doc.pos_profile : "",
+            },
+          });
+          target_price_list = res.message;
+        }
+        if (!target_price_list) return;
+
+        me.frm.doc.selling_price_list = target_price_list;
+
+        if (me.item_selector) {
+          me.item_selector.price_list = target_price_list;
+          if (me.item_selector.search_index) {
+            me.item_selector.search_index = {};
+          }
+          me.item_selector.get_items({}).then(({ message }) => {
+            if (message && message.items) {
+              me.item_selector.render_item_list(message.items);
+            }
+          });
+        }
+
+        if (me.frm.doc.items && me.frm.doc.items.length > 0) {
+          await me.recalculate_cart_items_for_price_list(target_price_list);
+        }
+      }
+
+      async recalculate_cart_items_for_price_list(target_price_list) {
+        const me = this;
+        if (!me.frm.doc.items || !me.frm.doc.items.length) return;
+
+        const items_payload = me.frm.doc.items.map((item) => ({
+          item_code: item.item_code,
+          uom: item.uom,
+          qty: item.qty,
+          discount_percentage: item.discount_percentage || 0,
+        }));
+
+        const res = await frappe.call({
+          method: "inn.helper.pos_pricing.get_items_pricing_for_price_list",
+          args: {
+            items: JSON.stringify(items_payload),
+            price_list: target_price_list,
+            posting_date: me.frm.doc.posting_date,
+            pos_profile: me.frm.doc ? me.frm.doc.pos_profile : "",
+          },
+        });
+
+        if (res.message && res.message.length === me.frm.doc.items.length) {
+          res.message.forEach((updated, idx) => {
+            const row = me.frm.doc.items[idx];
+            if (row && updated.price_list_rate !== undefined) {
+              row.price_list_rate = updated.price_list_rate;
+              row.rate = updated.rate;
+              row.amount = updated.amount;
+              row.net_amount = updated.net_amount;
+              me.update_cart_html(row);
+            }
+          });
+
+          await me.frm.script_manager.trigger("calculate_taxes_and_totals");
+          me.cart.update_totals_section(me.frm);
+        }
+      }
+
       dialog_transfer_charge_to_customer() {
         const frm_doc = this.frm.doc;
         if (!frm_doc.items || !frm_doc.items.length) {
@@ -430,6 +527,25 @@ frappe.pages["pos-extended"].on_page_load = function (wrapper) {
                   }
                 };
               },
+              onchange: async function () {
+                const folio_name = this.get_value();
+                if (folio_name) {
+                  const res = await frappe.call({
+                    method: "inn.helper.pos_pricing.get_folio_pricing",
+                    args: {
+                      folio_name: folio_name,
+                      pos_profile: me.frm.doc ? me.frm.doc.pos_profile : "",
+                    },
+                  });
+                  if (res && res.message && res.message.price_list) {
+                    await me.apply_customer_and_price_list_to_invoice(
+                      res.message.customer,
+                      res.message.price_list
+                    );
+                    d.set_value("grand_total_display", me.frm.doc.grand_total);
+                  }
+                }
+              },
             },
           ],
           size: "large",
@@ -445,52 +561,105 @@ frappe.pages["pos-extended"].on_page_load = function (wrapper) {
         d.show();
       }
 
-      transfer_folio(folio_id) {
+      async transfer_folio(folio_id) {
+        const me = this;
         const frm_doc = this.frm.doc;
-        frappe.run_serially([
-          () => frappe.dom.freeze(),
 
-          this.frm.savesubmit().then((r) => {
-            this.toggle_components(false);
-            this.order_summary.toggle_component(true);
-            // this.order_summary.load_summary_of(this.frm.doc, true);
+        // Ensure any previous unclosed freeze is completely removed
+        while (frappe.dom.freeze_count > 0) {
+          frappe.dom.unfreeze();
+        }
 
-            frappe.call({
-              method:
-                "inn.inn_hotels.page.pos_extended.pos_extended.save_pos_usage",
-              args: {
-                invoice_name: this.frm.doc.name,
-                table: this.cart.table_number,
-                action: "save_draft",
-              },
-              async: false,
+        try {
+          // 1. Update prices for Folio customer
+          const res = await frappe.call({
+            method: "inn.helper.pos_pricing.get_folio_pricing",
+            args: {
+              folio_name: folio_id,
+              pos_profile: frm_doc ? frm_doc.pos_profile : "",
+            },
+          });
+
+          if (res && res.message && res.message.price_list) {
+            await me.apply_customer_and_price_list_to_invoice(
+              res.message.customer,
+              res.message.price_list
+            );
+          }
+
+          // 2. Submit invoice without pre-freezing so confirmation dialog is in front
+          try {
+            await new Promise((resolve, reject) => {
+              me.frm.savesubmit(
+                null,
+                () => resolve(me.frm),
+                (err) => reject(err || new Error("cancelled"))
+              )
+                .then(resolve)
+                .catch(reject);
             });
-            frappe.call({
-              method:
-                "inn.inn_hotels.page.pos_extended.pos_extended.clean_table_number",
-              async: false,
-              args: {
-                invoice_name: this.frm.doc.name,
-              },
-            });
-            frappe.call({
-              method:
-                "inn.inn_hotels.page.pos_extended.pos_extended.transfer_to_folio",
-              args: {
-                invoice_doc: this.frm.doc,
-                folio_name: folio_id,
-                pos_profile_name: frm_doc.pos_profile,
-              },
-              async: false,
-            });
-            frappe.show_alert({
-              indicator: "green",
-              message: __("POS invoice {0} created succesfully", [r.doc.name]),
-            });
-            this.order_summary.load_summary_of(this.frm.doc, true);
-          }),
-          () => frappe.dom.unfreeze(),
-        ]);
+          } catch (subErr) {
+            console.log("Submit cancelled or failed:", subErr);
+            return;
+          }
+
+          // 3. Freeze while processing the folio transfer
+          frappe.dom.freeze(__("Transferring to Folio..."));
+
+          me.toggle_components(false);
+          me.order_summary.toggle_component(true);
+
+          await frappe.call({
+            method:
+              "inn.inn_hotels.page.pos_extended.pos_extended.save_pos_usage",
+            args: {
+              invoice_name: me.frm.doc.name,
+              table: me.cart.table_number,
+              action: "save_draft",
+            },
+          });
+
+          await frappe.call({
+            method:
+              "inn.inn_hotels.page.pos_extended.pos_extended.clean_table_number",
+            args: {
+              invoice_name: me.frm.doc.name,
+            },
+          });
+
+          await frappe.call({
+            method:
+              "inn.inn_hotels.page.pos_extended.pos_extended.transfer_to_folio",
+            args: {
+              invoice_doc: JSON.stringify(me.frm.doc),
+              folio_name: folio_id,
+              pos_profile_name: frm_doc.pos_profile,
+            },
+          });
+
+          frappe.show_alert({
+            indicator: "green",
+            message: __(
+              "POS invoice {0} created succesfully",
+              [me.frm.doc.name]
+            ),
+          });
+
+          me.order_summary.load_summary_of(me.frm.doc, true);
+        } catch (err) {
+          console.error("transfer_folio error:", err);
+          frappe.msgprint({
+            title: __("Error"),
+            indicator: "red",
+            message:
+              (err && err.message) ||
+              __("Failed to transfer charge to folio."),
+          });
+        } finally {
+          while (frappe.dom.freeze_count > 0) {
+            frappe.dom.unfreeze();
+          }
+        }
       }
 
       async print_table_order() {

@@ -188,6 +188,13 @@ frappe.require(["point-of-sale.bundle.js", "inn-pos.bundle.js"], function () {
             this.make_table_selector()
         }
 
+        reset_customer_selector() {
+            super.reset_customer_selector();
+            if (this.events && this.events.customer_details_updated) {
+                this.events.customer_details_updated({});
+            }
+        }
+
         bind_events() {
             super.bind_events()
 

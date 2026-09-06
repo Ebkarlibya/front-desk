@@ -148,13 +148,17 @@ def get_table_number(invoice_name):
         fieldname=["table", "transfer_to_folio"],
         as_dict=True,
     )
-    if data:
-        data["table_number"] = data["table"]
+    if not data:
+        return {"table": "-", "table_number": "-", "transfer_to_folio": None}
+    data["table_number"] = data.get("table") or "-"
     return data
 
 
 @frappe.whitelist()
 def clean_table_number(invoice_name):
+    if not frappe.db.exists({"doctype": "Inn POS Usage", "pos_invoice": invoice_name}):
+        return
+
     table_name = frappe.get_last_doc(
         doctype="Inn POS Usage", filters={"pos_invoice": invoice_name}
     )
@@ -170,19 +174,36 @@ def clean_table_number(invoice_name):
 
 @frappe.whitelist()
 def transfer_to_folio(invoice_doc, pos_profile_name, folio_name):
-    invoice_doc = json.loads(invoice_doc)
+    if isinstance(invoice_doc, str):
+        invoice_doc = json.loads(invoice_doc)
+
     if not frappe.db.exists(
         {"doctype": "Inn POS Usage", "pos_invoice": invoice_doc["name"]}
     ):
-        raise ValueError(
-            "save this transaction as draft first or print a captain order"
+        pos_usage = frappe.new_doc("Inn POS Usage")
+        pos_usage.pos_invoice = invoice_doc["name"]
+        pos_usage.print_status = ORDER_FINISHED
+        pos_usage.transfer_to_folio = folio_name
+        pos_usage.insert(ignore_permissions=True)
+    else:
+        pos_usage = frappe.get_last_doc(
+            "Inn POS Usage", filters={"pos_invoice": invoice_doc["name"]}
         )
+        pos_usage.transfer_to_folio = folio_name
+        pos_usage.save()
 
-    pos_usage = frappe.get_last_doc(
-        "Inn POS Usage", filters={"pos_invoice": invoice_doc["name"]}
+    from inn.helper.pos_pricing import get_customer_or_profile_price_list
+    folio_customer = frappe.db.get_value("Inn Folio", folio_name, "customer_id")
+    target_price_list = get_customer_or_profile_price_list(
+        customer=folio_customer, pos_profile=pos_profile_name
     )
-    pos_usage.transfer_to_folio = folio_name
-    pos_usage.save()
+    frappe.logger("inn.pos_extended").info(
+        f"[transfer_to_folio] Transferring POS Invoice '{invoice_doc['name']}' to folio '{folio_name}'. "
+        f"Folio customer: '{folio_customer}', Target Price List: '{target_price_list}'"
+    )
+    if folio_customer and frappe.db.exists("POS Invoice", invoice_doc["name"]):
+        if frappe.db.get_value("POS Invoice", invoice_doc["name"], "customer") != folio_customer:
+            frappe.db.set_value("POS Invoice", invoice_doc["name"], "customer", folio_customer)
 
     # Fetch transaction types from Inn Hotels Setting
     hotel_settings = frappe.get_doc("Inn Hotels Setting")
@@ -242,23 +263,26 @@ def transfer_to_folio(invoice_doc, pos_profile_name, folio_name):
         "Tax of Transfer Restaurant Charges from POS Order: " + invoice_doc["name"],
     ]
 
-    if len(invoice_doc["taxes"]) == 1:
+    taxes = invoice_doc.get("taxes") or []
+    if len(taxes) == 1:
         # If the tax is only one, it's probably just a tax charge
         tax_type.pop(0)
         remarks.pop(0)
 
-    for ii in range(len(invoice_doc["taxes"])):
-        taxe = invoice_doc["taxes"][ii]
+    for ii in range(len(taxes)):
+        taxe = taxes[ii]
+        tax_amt = taxe.get("tax_amount_after_discount_amount", 0) if isinstance(taxe, dict) else getattr(taxe, "tax_amount_after_discount_amount", 0)
+        acc_head = taxe.get("account_head") if isinstance(taxe, dict) else getattr(taxe, "account_head", None)
         create_folio_trx(
             invoice_doc["name"],
             folio_name,
-            taxe["tax_amount_after_discount_amount"],
-            tax_type[ii],
+            tax_amt,
+            tax_type[ii] if ii < len(tax_type) else "",
             ftb_doc,
-            remarks[ii],
+            remarks[ii] if ii < len(remarks) else "",
             idx,
             guest_account_receivable,
-            taxe["account_head"],
+            acc_head,
         )
         idx = idx + 1
 
