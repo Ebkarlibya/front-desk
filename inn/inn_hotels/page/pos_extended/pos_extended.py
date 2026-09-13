@@ -1,7 +1,7 @@
 import json
 import frappe
 from frappe import _
-from frappe.utils import flt, get_datetime
+from frappe.utils import flt, get_datetime, nowdate
 from frappe.utils.print_utils import get_print
 from frappe.utils.file_manager import save_file
 
@@ -193,6 +193,7 @@ def transfer_to_folio(invoice_doc, pos_profile_name, folio_name):
         pos_usage.save()
 
     from inn.helper.pos_pricing import get_customer_or_profile_price_list
+
     folio_customer = frappe.db.get_value("Inn Folio", folio_name, "customer_id")
     target_price_list = get_customer_or_profile_price_list(
         customer=folio_customer, pos_profile=pos_profile_name
@@ -202,8 +203,13 @@ def transfer_to_folio(invoice_doc, pos_profile_name, folio_name):
         f"Folio customer: '{folio_customer}', Target Price List: '{target_price_list}'"
     )
     if folio_customer and frappe.db.exists("POS Invoice", invoice_doc["name"]):
-        if frappe.db.get_value("POS Invoice", invoice_doc["name"], "customer") != folio_customer:
-            frappe.db.set_value("POS Invoice", invoice_doc["name"], "customer", folio_customer)
+        if (
+            frappe.db.get_value("POS Invoice", invoice_doc["name"], "customer")
+            != folio_customer
+        ):
+            frappe.db.set_value(
+                "POS Invoice", invoice_doc["name"], "customer", folio_customer
+            )
 
     # Fetch transaction types from Inn Hotels Setting
     hotel_settings = frappe.get_doc("Inn Hotels Setting")
@@ -271,8 +277,16 @@ def transfer_to_folio(invoice_doc, pos_profile_name, folio_name):
 
     for ii in range(len(taxes)):
         taxe = taxes[ii]
-        tax_amt = taxe.get("tax_amount_after_discount_amount", 0) if isinstance(taxe, dict) else getattr(taxe, "tax_amount_after_discount_amount", 0)
-        acc_head = taxe.get("account_head") if isinstance(taxe, dict) else getattr(taxe, "account_head", None)
+        tax_amt = (
+            taxe.get("tax_amount_after_discount_amount", 0)
+            if isinstance(taxe, dict)
+            else getattr(taxe, "tax_amount_after_discount_amount", 0)
+        )
+        acc_head = (
+            taxe.get("account_head")
+            if isinstance(taxe, dict)
+            else getattr(taxe, "account_head", None)
+        )
         create_folio_trx(
             invoice_doc["name"],
             folio_name,
@@ -438,16 +452,88 @@ def transfer_charge_to_customer(
     cart_data_str, paying_customer, pos_profile_name, original_customer=None
 ):
     try:
-        cart_data = json.loads(cart_data_str)
-        invoice = (
-            frappe._dict(cart_data_str)
-            if isinstance(cart_data_str, dict)
-            else json.loads(cart_data_str)
+        cart_data = (
+            json.loads(cart_data_str)
+            if isinstance(cart_data_str, str)
+            else cart_data_str
         )
+        invoice = frappe._dict(cart_data)
         invoice_name = invoice.get("name")
-        grand_total = flt(invoice.get("grand_total"))
         company = invoice.get("company")
-        posting_date = get_datetime(invoice.get("posting_date")).date()
+        posting_date = (
+            get_datetime(invoice.get("posting_date")).date()
+            if invoice.get("posting_date")
+            else get_datetime(nowdate()).date()
+        )
+
+        # 0. التحقق من العميل الدافع وتحديد قائمة الأسعار وإعادة حساب الأسعار بناءً عليه
+        if not paying_customer:
+            frappe.throw(_("Paying Customer is required."))
+
+        if not frappe.db.exists("Customer", paying_customer):
+            frappe.throw(_("Customer {0} does not exist.").format(paying_customer))
+
+        from inn.helper.pos_pricing import (
+            get_customer_or_profile_price_list,
+            recalculate_invoice_items_price,
+            get_item_price_rate,
+        )
+
+        target_price_list = get_customer_or_profile_price_list(
+            customer=paying_customer, pos_profile=pos_profile_name
+        )
+        frappe.logger("inn.pos_extended").info(
+            f"[transfer_charge_to_customer] Recalculating charge for invoice '{invoice_name}' "
+            f"for paying customer '{paying_customer}' with price list '{target_price_list}'"
+        )
+
+        if invoice_name and frappe.db.exists("POS Invoice", invoice_name):
+            pos_invoice = frappe.get_doc("POS Invoice", invoice_name)
+            if pos_invoice.docstatus == 0:
+                pos_invoice.customer = paying_customer
+                pos_invoice.selling_price_list = target_price_list
+                recalculate_invoice_items_price(pos_invoice, target_price_list)
+                pos_invoice.flags.ignore_permissions = True
+                pos_invoice.save()
+                grand_total = flt(pos_invoice.grand_total)
+                cart_data = pos_invoice.as_dict()
+                invoice = frappe._dict(cart_data)
+                company = pos_invoice.company or company
+            else:
+                grand_total = flt(pos_invoice.grand_total)
+        else:
+            fallback_pl = (
+                frappe.db.get_value(
+                    "POS Profile", pos_profile_name, "selling_price_list"
+                )
+                if pos_profile_name
+                else None
+            )
+            items_list = (
+                cart_data.get("items", []) if isinstance(cart_data, dict) else []
+            )
+            recalc_total = 0.0
+            for item in items_list:
+                new_price = get_item_price_rate(
+                    item.get("item_code"),
+                    target_price_list,
+                    item.get("uom"),
+                    posting_date,
+                    fallback_price_list=fallback_pl,
+                )
+                if new_price:
+                    item["price_list_rate"] = new_price
+                    discount = flt(item.get("discount_percentage")) or 0.0
+                    item["rate"] = flt(new_price * (1.0 - discount / 100.0))
+                    item["amount"] = flt(item["rate"] * flt(item.get("qty", 1)))
+                    item["net_amount"] = item["amount"]
+                    recalc_total += item["amount"]
+                else:
+                    recalc_total += flt(item.get("amount") or 0.0)
+            grand_total = (
+                recalc_total if recalc_total > 0 else flt(invoice.get("grand_total"))
+            )
+
         if not all([invoice_name, grand_total > 0, company, paying_customer]):
             frappe.throw(
                 _(
@@ -493,6 +579,12 @@ def transfer_charge_to_customer(
             "Transfer of POS Invoice {0} charge (originally for {1}) to customer {2}."
         ).format(invoice_name, original_customer or _("Walk-in"), paying_customer)
 
+        cost_center = (
+            invoice.get("cost_center")
+            or frappe.db.get_value("POS Profile", pos_profile_name, "cost_center")
+            or frappe.get_cached_value("Company", company, "cost_center")
+        )
+
         # الطرف المدين: حساب العميل الدافع
         je.append(
             "accounts",
@@ -501,7 +593,7 @@ def transfer_charge_to_customer(
                 "party_type": "Customer",
                 "party": paying_customer,
                 "debit_in_account_currency": grand_total,
-                "cost_center": invoice.get("cost_center"),
+                "cost_center": cost_center,
             },
         )
 
@@ -511,18 +603,42 @@ def transfer_charge_to_customer(
             {
                 "account": charge_transfer_account,
                 "credit_in_account_currency": grand_total,
-                "cost_center": invoice.get("cost_center"),
+                "cost_center": cost_center,
             },
         )
 
         je.flags.ignore_mandatory = True
         je.submit()
 
+        ar_city_ledger = frappe.new_doc("AR City Ledger")
+        ar_city_ledger.naming_series = "AR-CL-.YYYY.-"
+        ar_city_ledger.is_paid = 0
+        ar_city_ledger.customer_id = paying_customer
+        ar_city_ledger.total_amount = grand_total
+        ar_city_ledger.journal_entry = je.name
+        ar_city_ledger.flags.ignore_permissions = True
+        ar_city_ledger.insert()
+
         _attach_invoice_pdf_to_journal_entry(je.name, invoice_name)
+
+        if invoice_name and frappe.db.exists("POS Invoice", invoice_name):
+            frappe.db.set_value(
+                "POS Invoice",
+                invoice_name,
+                {
+                    "consolidated_invoice": f"Transferred to {paying_customer} via {je.name}",
+                    "status": "Consolidated",
+                },
+            )
 
         se_items_list = prepare_se_items_from_invoice(cart_data)
         create_material_issue_from_pos(pos_profile_name, se_items_list)
-        return {"status": "success", "journal_entry": je.name}
+
+        return {
+            "status": "success",
+            "journal_entry": je.name,
+            "ar_city_ledger": ar_city_ledger.name,
+        }
 
     except Exception as e:
         frappe.log_error(frappe.get_traceback(), "transfer_charge_to_customer Error")

@@ -257,6 +257,16 @@ def get_items(start, page_length, price_list, item_group, pos_profile, search_te
         else None
     )
     items = res.get("items", []) if isinstance(res, dict) else res
+    if not items and fallback_pl and fallback_pl != price_list:
+        res = erpnext_get_items(
+            start=start,
+            page_length=page_length,
+            price_list=fallback_pl,
+            item_group=item_group,
+            pos_profile=pos_profile,
+            search_term=search_term,
+        )
+        items = res.get("items", []) if isinstance(res, dict) else res
 
     for it in items:
         rate = get_item_price_rate(
