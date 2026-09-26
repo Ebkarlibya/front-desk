@@ -23,6 +23,8 @@
   "total_discount",
   "sb3",
   "folio",
+  "sb_ar_city_ledger",
+  "ar_city_ledger_items",
   "sb4",
   "payments",
   "sb5",
@@ -136,6 +138,17 @@
    "fieldtype": "Table",
    "label": "AR City Ledger Invoice Folio",
    "options": "AR City Ledger Invoice Folio"
+  },
+  {
+   "fieldname": "sb_ar_city_ledger",
+   "fieldtype": "Section Break",
+   "label": "AR City Ledger to be Collected"
+  },
+  {
+   "fieldname": "ar_city_ledger_items",
+   "fieldtype": "Table",
+   "label": "AR City Ledger Items",
+   "options": "AR City Ledger Invoice Item"
   },
   {
    "fieldname": "sb4",

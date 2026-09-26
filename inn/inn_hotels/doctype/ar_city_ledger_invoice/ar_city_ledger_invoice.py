@@ -17,9 +17,27 @@ class ARCityLedgerInvoice(Document):
         1. Duplicate folios within the same document's child table.
         2. Folios already present in other submitted AR City Ledger Invoices.
         """
+        self.validate_has_items_to_collect()
         self.validate_unique_folios_in_table()
         self.validate_folios_not_in_other_invoices()
+        self.validate_unique_ar_city_ledgers_in_table()
+        self.validate_ar_city_ledgers_not_in_other_invoices()
         self.validate_payment_totals_not_exceed()
+
+    def validate_has_items_to_collect(self):
+        """Ensure invoice has at least one Folio or AR City Ledger item."""
+        has_folio = bool(self.folio and len(self.folio) > 0)
+        has_ledger_items = bool(
+            getattr(self, "ar_city_ledger_items", None)
+            and len(self.ar_city_ledger_items) > 0
+        )
+        if not has_folio and not has_ledger_items:
+            frappe.throw(
+                _(
+                    "Please add at least one Folio or AR City Ledger Item to be Collected before saving."
+                ),
+                title=_("Missing Items to Collect"),
+            )
 
     def validate_unique_folios_in_table(self):
         """
@@ -98,17 +116,92 @@ class ARCityLedgerInvoice(Document):
                     title=_("Folio Already Used Error"),
                 )
 
+    def validate_unique_ar_city_ledgers_in_table(self):
+        """
+        Checks if there are any duplicate AR City Ledger records in ar_city_ledger_items.
+        Raises a ValidationError if duplicates are found.
+        """
+        if not getattr(self, "ar_city_ledger_items", None):
+            return
+
+        seen_ledgers = set()
+        for item in self.ar_city_ledger_items:
+            if not item.ar_city_ledger:
+                continue
+
+            if item.ar_city_ledger in seen_ledgers:
+                frappe.throw(
+                    _(
+                        "AR City Ledger '{0}' is duplicated in the AR City Ledger to be Collected table. Please ensure each item is added only once."
+                    ).format(item.ar_city_ledger),
+                    title=_("Duplicate AR City Ledger Error"),
+                )
+            seen_ledgers.add(item.ar_city_ledger)
+
+    def validate_ar_city_ledgers_not_in_other_invoices(self):
+        """
+        Checks if any AR City Ledger in ar_city_ledger_items is already present
+        in another non-cancelled AR City Ledger Invoice.
+        """
+        if not getattr(self, "ar_city_ledger_items", None):
+            return
+
+        current_document_name = self.name if self.name else ""
+
+        for item in self.ar_city_ledger_items:
+            if not item.ar_city_ledger:
+                continue
+
+            try:
+                conflicting_invoice = frappe.db.sql(
+                    """
+                    SELECT t1.name
+                    FROM `tabAR City Ledger Invoice` t1
+                    JOIN `tabAR City Ledger Invoice Item` t2
+                        ON t1.name = t2.parent
+                    WHERE t2.ar_city_ledger = %(ar_city_ledger)s
+                        AND t1.name != %(current_doc_name)s
+                        AND t1.status != 'Cancelled'
+                    LIMIT 1
+                    """,
+                    {
+                        "ar_city_ledger": item.ar_city_ledger,
+                        "current_doc_name": current_document_name,
+                    },
+                    as_dict=True,
+                )
+            except Exception as e:
+                frappe.throw(
+                    _(
+                        "An error occurred during AR City Ledger validation for {0}: {1}"
+                    ).format(item.ar_city_ledger, str(e))
+                )
+
+            if conflicting_invoice:
+                conflicting_name = conflicting_invoice[0].name
+                frappe.throw(
+                    _(
+                        "AR City Ledger '{0}' is already present in another AR City Ledger Invoice '{1}'. Please remove it or cancel the conflicting invoice."
+                    ).format(item.ar_city_ledger, conflicting_name),
+                    title=_("AR City Ledger Already Used Error"),
+                )
+
     def validate_payment_totals_not_exceed(self):
         """
         Ensure sum(payments.payment_amount) + sum(payment_entry.payment_amount)
-        does not exceed total amount from folios.
+        does not exceed total amount from folios and ar_city_ledger_items.
         """
-        # حساب إجمالي الفوليوهات
+        # حساب إجمالي الفوليوهات وسجلات الـ City Ledger
         total_amount = 0.0
         if getattr(self, "folio", None):
             for f in self.folio:
                 if getattr(f, "amount", None):
                     total_amount += flt(f.amount)
+
+        if getattr(self, "ar_city_ledger_items", None):
+            for item in self.ar_city_ledger_items:
+                if getattr(item, "amount", None):
+                    total_amount += flt(item.amount)
 
         # حساب إجمالي الدفعات من جدول payments
         total_paid = 0.0
@@ -116,10 +209,16 @@ class ARCityLedgerInvoice(Document):
             for p in self.payments:
                 total_paid += flt(p.get("payment_amount", 0))
 
-        # حساب إجمالي الدفعات من جدول Payment Entry (اسم الحقل حسب DocType)
+        # حساب إجمالي الدفعات من جدول Payment Entry
         if getattr(self, "ar_city_ledger_invoice_payment_entry", None):
             for pe in self.ar_city_ledger_invoice_payment_entry:
                 total_paid += flt(pe.get("payment_amount", 0))
+
+        # حساب الخصومات المطبقة (المرتبطة بـ Journal Entry)
+        if getattr(self, "ar_city_ledger_invoice_discounts", None):
+            for d in self.ar_city_ledger_invoice_discounts:
+                if d.get("journal_entry_id"):
+                    total_paid += flt(d.get("payment_amount", 0))
 
         # تحقق الفائض
         if flt(total_paid) > flt(total_amount):
@@ -130,8 +229,46 @@ class ARCityLedgerInvoice(Document):
                 title=_("Overpayment Error"),
             )
 
-        if flt(total_paid) == flt(total_amount) and self.status != "Paid":
+        self.total_amount = flt(total_amount)
+        self.total_paid = flt(total_paid)
+        self.outstanding = max(0.0, flt(total_amount) - flt(total_paid))
+
+        if flt(total_amount) > 0 and flt(total_paid) >= flt(total_amount) - 0.0001:
             self.status = "Paid"
+
+    def on_update(self):
+        if self.status == "Paid":
+            self.update_linked_city_ledgers_as_paid()
+
+    def update_linked_city_ledgers_as_paid(self):
+        """Update associated AR City Ledger documents when invoice is Paid."""
+        # 1. Update from folio table
+        if getattr(self, "folio", None):
+            for folio_item in self.folio:
+                if getattr(folio_item, "ar_city_ledger_id", None):
+                    frappe.db.set_value(
+                        "AR City Ledger",
+                        folio_item.ar_city_ledger_id,
+                        {
+                            "is_paid": 1,
+                            "ar_city_ledger_invoice_id": self.name,
+                        },
+                        update_modified=True,
+                    )
+
+        # 2. Update from ar_city_ledger_items table
+        if getattr(self, "ar_city_ledger_items", None):
+            for item in self.ar_city_ledger_items:
+                if getattr(item, "ar_city_ledger", None):
+                    frappe.db.set_value(
+                        "AR City Ledger",
+                        item.ar_city_ledger,
+                        {
+                            "is_paid": 1,
+                            "ar_city_ledger_invoice_id": self.name,
+                        },
+                        update_modified=True,
+                    )
 
 
 @frappe.whitelist()
@@ -169,9 +306,15 @@ def make_payment(id):
     """
     doc = frappe.get_doc("AR City Ledger Invoice", id)
 
-    if not doc.folio or len(doc.folio) == 0:
+    has_folio = doc.folio and len(doc.folio) > 0
+    has_ledger_items = (
+        getattr(doc, "ar_city_ledger_items", None) and len(doc.ar_city_ledger_items) > 0
+    )
+    if not has_folio and not has_ledger_items:
         frappe.throw(
-            _("Please add Folio(s) to be Collected first before making payment.")
+            _(
+                "Please add Folio(s) or AR City Ledger Item(s) to be Collected first before making payment."
+            )
         )
 
     # current_total_amount_from_folios = sum(flt(f.amount) for f in doc.folio if f.amount is not None)
@@ -258,17 +401,10 @@ def make_payment(id):
     doc.reload()
 
     # Check if total_paid now equals total_amount (using reloaded doc values)
-    if flt(doc.total_paid) == flt(doc.total_amount):
+    if flt(doc.total_paid) >= flt(doc.total_amount) - 0.0001:
         doc.status = "Paid"
         doc.save()
-
-        # Update associated AR City Ledger documents (if applicable)
-        for folio_item in doc.folio:
-            ar_city_ledger_doc = frappe.get_doc(
-                "AR City Ledger", folio_item.ar_city_ledger_id
-            )
-            ar_city_ledger_doc.is_paid = 1
-            ar_city_ledger_doc.save(ignore_permissions=True)
+        doc.update_linked_city_ledgers_as_paid()
 
     return return_status
 
@@ -653,6 +789,7 @@ def make_journal_entry__discount(arci_name):
         arci.outstanding = 0.0
     if flt(arci.outstanding) == 0:
         arci.status = "Paid"
+        arci.update_linked_city_ledgers_as_paid()
 
     arci.save(ignore_permissions=True)
 
@@ -731,3 +868,69 @@ def on_journal_entry_cancel_discount(doc, method):
         arci.save(ignore_permissions=True)
 
     # After successful removal, nothing else needed.
+
+
+@frappe.whitelist()
+def get_unpaid_ar_city_ledgers_for_invoice(
+    customer_id, from_date=None, current_invoice=""
+):
+    """
+    Fetch unpaid AR City Ledger records for invoice collection that:
+    1. Belong to customer_id
+    2. Have is_paid = 0
+    3. Have journal_entry IS NOT NULL and != ''
+    4. Are NOT already present in another non-cancelled AR City Ledger Invoice
+    """
+    if not customer_id:
+        return []
+
+    conditions = [
+        "t1.customer_id = %(customer_id)s",
+        "t1.is_paid = 0",
+        "t1.journal_entry IS NOT NULL",
+        "t1.journal_entry != ''",
+    ]
+    values = {"customer_id": customer_id}
+
+   
+    if current_invoice:
+        conditions.append(
+            """
+            t1.name NOT IN (
+                SELECT t2.ar_city_ledger
+                FROM `tabAR City Ledger Invoice Item` t2
+                JOIN `tabAR City Ledger Invoice` p ON p.name = t2.parent
+                WHERE p.status != 'Cancelled' AND p.name != %(current_invoice)s
+            )
+        """
+        )
+        values["current_invoice"] = current_invoice
+    else:
+        conditions.append(
+            """
+            t1.name NOT IN (
+                SELECT t2.ar_city_ledger
+                FROM `tabAR City Ledger Invoice Item` t2
+                JOIN `tabAR City Ledger Invoice` p ON p.name = t2.parent
+                WHERE p.status != 'Cancelled'
+            )
+        """
+        )
+
+    where_clause = " AND ".join(conditions)
+
+    sql = f"""
+        SELECT
+            t1.name as ar_city_ledger,
+            t1.customer_id,
+            t1.folio_id as folio,
+            t1.journal_entry,
+            t1.total_amount as amount,
+            t1.folio_open,
+            t1.folio_close
+        FROM `tabAR City Ledger` t1
+        WHERE {where_clause}
+        ORDER BY t1.folio_open ASC, t1.creation ASC
+    """
+
+    return frappe.db.sql(sql, values, as_dict=True)
