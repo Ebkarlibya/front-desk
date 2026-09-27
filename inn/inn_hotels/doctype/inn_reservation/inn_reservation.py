@@ -53,7 +53,6 @@ class InnReservation(Document):
         self.validate_room_booking()
 
     def validate_room_booking(self):
-        # try:
         filters = {
             "start": self.expected_arrival,
             "end": self.expected_departure,
@@ -68,18 +67,15 @@ class InnReservation(Document):
         rooms = [item[0] for item in get_room_book_list(filters)]
 
         if self.room_id in rooms:
-            frappe.throw("Room " + self.room_id + " is already booked in this period")
+            frappe.throw(_("Room {0} is already booked in this period").format(self.room_id))
 
-        # if self.actual_room_id:
-        # if self.actual_room_id in rooms:
-        #     frappe.throw(
-        #         "Actual Room "
-        #         + self.actual_room_id
-        #         + " is already booked in this period"
-        #     )
-        # except Exception as e:
-        #     print(e)
-        #     pass
+        if self.actual_room_id and self.actual_room_id != self.room_id:
+            if self.actual_room_id in rooms:
+                frappe.throw(
+                    _("Actual Room {0} is already booked in this period").format(
+                        self.actual_room_id
+                    )
+                )
 
 
 # searches for leads which are not converted
