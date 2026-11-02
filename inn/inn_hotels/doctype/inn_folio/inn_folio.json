@@ -35,6 +35,8 @@
   "total_credit",
   "cb5",
   "balance",
+  "excess_amount",
+  "excess_credited",
   "sb0",
   "toggle_void_transaction",
   "folio_transaction",
@@ -192,6 +194,20 @@
    "label": "Balance",
    "precision": "2",
    "read_only": 1
+  },
+  {
+    "fieldname":"excess_amount",
+    "fieldtype": "Currency",
+    "label":"Excess Amount",
+    "precision": "2",
+    "read_only": 1
+
+  },
+  {
+    "fieldname":"excess_credited",
+    "fieldtype": "Currency",
+    "label":"Excess Credited",
+    "read_only": 1
   },
   {
    "fieldname": "sb0",

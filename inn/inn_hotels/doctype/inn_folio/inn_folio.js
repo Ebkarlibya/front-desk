@@ -95,10 +95,10 @@ frappe.ui.form.on("Inn Folio", {
         // Close folio manually for Folio type master or desk
         if (frm.doc.type !== "Guest") {
           frm.page.add_menu_item(__("Close Folio"), function () {
-            if (frm.doc.balance !== 0) {
+            if (frm.doc.balance < 0 )  { //to allow close
               frappe.msgprint(
                 __(
-                  "Balance is not 0. There are still transactions needed to be resolved."
+                  "Balance is negative. There are still transactions needed to be resolved."
                 )
               );
             } else {
