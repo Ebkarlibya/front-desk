@@ -61,6 +61,8 @@ def get_reservation_id(folio_id):
 @frappe.whitelist()
 def update_balance(folio_id):
     doc = frappe.get_doc("Inn Folio", folio_id)
+    if doc.status=="Closed":
+        return doc.total_debit, doc.total_credit,doc.balance #if status=closed return
     trx_list = doc.get("folio_transaction")
     total_debit = 0.0
     total_credit = 0.0
@@ -198,6 +200,7 @@ def close_folio(folio_id):
             return "Balance is negative. There are still transactions needed to be resolved."
         credit_excess_to_customer(folio_id)
         folio = frappe.get_doc("Inn Folio", folio_id)
+        folio.balance=0 #remaining differnce to zero
         folio.status = "Closed"
         folio.close = datetime.date.today()
         folio.save()
