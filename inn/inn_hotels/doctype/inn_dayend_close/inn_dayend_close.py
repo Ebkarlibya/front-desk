@@ -6,14 +6,10 @@ from __future__ import unicode_literals
 
 import frappe
 import datetime
-from inn.inn_hotels.doctype.inn_folio.inn_folio import (
-    update_balance,
-    credit_excess_to_customer,
-)
 from frappe.model.document import Document
 from inn.helper.utils import fetch_folio_accounts
 from inn.inn_hotels.doctype.inn_audit_log.inn_audit_log import get_last_audit_date
-from inn.inn_hotels.doctype.inn_folio.inn_folio import check_void_request
+from inn.inn_hotels.doctype.inn_folio.inn_folio import (check_void_request,credit_excess_to_customer,update_balance,)
 from inn.inn_hotels.doctype.inn_dayend_close.inn_dayend_close_helper import (
     _fill_party_account,
 )
@@ -670,11 +666,12 @@ def credit_today_closed_folios():
     folios = frappe.get_all(
         "Inn Folio",
         filters={
-            "status": "Closed",
-            "close": datetime.date.today(),
+            "status": ["in", ["Open", "Closed"]],
+            "modified": [">=", get_last_audit_date()],
         },
         fields=["name"],
     )
 
     for folio in folios:
+        update_balance(folio.name)
         credit_excess_to_customer(folio.name)

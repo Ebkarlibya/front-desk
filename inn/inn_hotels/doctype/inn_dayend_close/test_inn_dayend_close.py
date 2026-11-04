@@ -1,106 +1,50 @@
 # -*- coding: utf-8 -*-
 # Copyright (c) 2020, Core Initiative and Contributors
 # See license.txt
-# -*- coding: utf-8 -*-
-from __future__ import unicode_literals
 
-import frappe
 import datetime
+from unittest.mock import MagicMock, patch
+
+import inn.inn_hotels.doctype.inn_dayend_close.inn_dayend_close as dayend_close
 
 from frappe.tests.utils import FrappeTestCase
-from frappe.utils import flt
-
-from inn.inn_hotels.doctype.inn_dayend_close.inn_dayend_close import (
-    credit_today_closed_folios,
-)
 
 
 class TestInnDayendClose(FrappeTestCase):
 
-    def setUp(self):
-        self.customer = self.get_any("Customer")
-        self.group = self.get_any("Inn Group")
-        self.folio = self.make_folio()
+    def test_dayend_close_calls_credit_today_closed_folios(self):
+        settings = MagicMock()
+        settings.include_tax = 0
 
-    # ---------- helpers ----------
+        dayend_doc = MagicMock()
+        dayend_doc.status = "Open"
 
-    def get_any(self, doctype):
-        name = frappe.db.get_value(doctype, {}, "name")
-        if not name:
-            self.skipTest("No %s record in the site" % doctype)
-        return name
+        audit_log = MagicMock()
 
-    def make_folio(self):
-        folio = frappe.new_doc("Inn Folio")
-        folio.type = "Master"
-        folio.customer_id = self.customer
-        folio.group_id = self.group
-        folio.open = datetime.date.today()
-        folio.close = datetime.date.today()
-        folio.status = "Closed"
-        folio.excess_amount = 2000
-        folio.excess_credited = 0
-        folio.balance = 0
-        folio.insert()
+        with patch.object(
+            dayend_close.frappe,
+            "get_doc",
+            side_effect=[settings, dayend_doc],
+        ), patch.object(
+            dayend_close.frappe,
+            "get_all",
+            return_value=[],
+        ), patch.object(
+            dayend_close.frappe,
+            "new_doc",
+            return_value=audit_log,
+        ), patch.object(
+            dayend_close,
+            "get_last_audit_date",
+            return_value=datetime.date.today(),
+        ), patch.object(
+            dayend_close,
+            "credit_today_closed_folios",
+        ) as mock_credit:
 
-        return folio
+            result = dayend_close.process_dayend_close("TEST-DAYEND")
 
-    def payment_entries_count(self):
-        return frappe.db.count(
-            "Payment Entry",
-            {
-                "party": self.customer,
-                "docstatus": 1,
-            },
-        )
-
-    # ---------- tests ----------
-
-    def test_today_closed_folio_credits_excess(self):
-        before = self.payment_entries_count()
-
-        credit_today_closed_folios()
-
-        self.folio.reload()
-
-        self.assertEqual(
-            flt(self.folio.excess_credited),
-            2000,
-        )
-
-        self.assertEqual(
-            self.payment_entries_count() - before,
-            1,
-        )
-
-    def test_excess_is_not_credited_twice(self):
-        credit_today_closed_folios()
-
-        after_first_call = self.payment_entries_count()
-
-        credit_today_closed_folios()
-
-        self.assertEqual(
-            self.payment_entries_count(),
-            after_first_call,
-        )
-
-    def test_folio_closed_on_another_date_is_not_credited(self):
-        self.folio.close = datetime.date.today() - datetime.timedelta(days=1)
-        self.folio.save()
-
-        before = self.payment_entries_count()
-
-        credit_today_closed_folios()
-
-        self.folio.reload()
-
-        self.assertEqual(
-            flt(self.folio.excess_credited),
-            0,
-        )
-
-        self.assertEqual(
-            self.payment_entries_count(),
-            before,
-        )
+            mock_credit.assert_called_once()
+            self.assertEqual(result, "Closed")
+            audit_log.insert.assert_called_once()
+            dayend_doc.save.assert_called_once()

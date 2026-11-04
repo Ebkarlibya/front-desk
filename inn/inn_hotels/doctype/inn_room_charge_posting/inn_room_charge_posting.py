@@ -1,6 +1,6 @@
 from __future__ import unicode_literals
 from frappe import _
-
+from inn.inn_hotels.doctype.inn_folio.inn_folio import update_balance
 import json
 import frappe
 import math
@@ -515,7 +515,7 @@ def post_individual_room_charges(parent_id, tobe_posted_list):
         posted.parentfield = "already_posted"
         posted.parenttype = "Inn Room Charge Posting"
         room_charge_posting_doc.append("already_posted", posted)
-
+        update_balance(item_doc.folio_id)
         frappe.delete_doc("Inn Room Charge To Be Posted", item_doc.name)
 
     room_charge_posting_doc.save()
@@ -941,7 +941,7 @@ def post_room_charges(parent_id, tobe_posted_list):
         posted.parentfield = "already_posted"
         posted.parenttype = "Inn Room Charge Posting"
         room_charge_posting_doc.append("already_posted", posted)
-
+        update_balance(item["folio_id"])
         frappe.delete_doc("Inn Room Charge To Be Posted", item["name"])
 
     room_charge_posting_doc.save()
