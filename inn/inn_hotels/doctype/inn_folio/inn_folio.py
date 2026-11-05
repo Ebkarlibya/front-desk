@@ -7,6 +7,7 @@ import frappe
 import math
 import json
 import datetime
+from frappe.utils import flt
 from frappe.model.document import Document
 
 
@@ -60,6 +61,8 @@ def get_reservation_id(folio_id):
 @frappe.whitelist()
 def update_balance(folio_id):
     doc = frappe.get_doc("Inn Folio", folio_id)
+    if doc.status=="Closed":
+        return doc.total_debit, doc.total_credit,doc.balance #if status=closed return
     trx_list = doc.get("folio_transaction")
     total_debit = 0.0
     total_credit = 0.0
@@ -69,13 +72,15 @@ def update_balance(folio_id):
         elif trx.flag == "Credit" and trx.is_void == 0:
             total_credit += float(trx.amount)
     balance = total_credit - math.ceil(total_debit)
+    excess_amount=balance if balance>0 else 0  #adding the result
 
-    if balance != doc.balance:
+    if balance != doc.balance or flt(excess_amount) != flt(doc.excess_amount) :
         frappe.db.set_value(
             "Inn Folio", doc.name, "total_debit", math.ceil(total_debit)
         )
         frappe.db.set_value("Inn Folio", doc.name, "total_credit", total_credit)
         frappe.db.set_value("Inn Folio", doc.name, "balance", int(balance))
+        frappe.db.set_value("Inn Folio",doc.name,"excess_amount",excess_amount) #set new value of excess
 
     return total_debit, total_credit, balance
 
@@ -93,8 +98,8 @@ def need_to_update_balance(folio_id):
         elif trx.flag == "Credit" and trx.is_void == 0:
             total_credit += float(trx.amount)
     balance = total_credit - total_debit
-
-    if balance != doc.balance:
+   
+    if balance != doc.balance or flt(max(balance,0))!=flt(doc.excess_amount):#check if excess need to change 
         return 1
     else:
         return 0
@@ -146,6 +151,42 @@ def is_using_city_ledger(folio_id):
             is_using = True
     return is_using
 
+@frappe.whitelist()
+def credit_excess_to_customer(folio_id):#limit dublicate of sending
+    from erpnext.accounts.party import get_party_account
+    from inn.inn_hotels.doctype.inn_audit_log.inn_audit_log import get_last_audit_date
+    values = frappe.db.get_value(
+        "Inn Folio", folio_id,
+        ["excess_amount", "excess_credited", "customer_id"],
+        as_dict=True,
+    )
+    excess_amount = flt(values.excess_amount)
+    sending=excess_amount-flt(values.excess_credited)
+    if sending<=0:
+        return
+  
+    mode_of_payment = "Cash"
+    company = frappe.get_doc("Global Defaults").default_company
+    paid_to = frappe.db.get_value(
+        "Mode of Payment Account",
+        {"parent": mode_of_payment, "company": company},
+        "default_account",
+    )
+    new_payment = frappe.new_doc("Payment Entry")
+    new_payment.payment_type = "Receive"
+    new_payment.posting_date = get_last_audit_date()
+    new_payment.mode_of_payment = mode_of_payment
+    new_payment.party_type = "Customer"
+    new_payment.party = values.customer_id
+    new_payment.company = company
+    new_payment.paid_from = get_party_account("Customer", values.customer_id, company)
+    new_payment.paid_to = paid_to
+    new_payment.paid_amount = sending
+    new_payment.received_amount = sending
+    new_payment.insert()
+    new_payment.submit()
+    frappe.db.set_value("Inn Folio", folio_id, "excess_credited", excess_amount)
+
 
 @frappe.whitelist()
 def close_folio(folio_id):
@@ -153,7 +194,13 @@ def close_folio(folio_id):
 
     list = check_void_request(folio_id)
     if len(list) == 0:
+        update_balance(folio_id)
+        balance = frappe.db.get_value("Inn Folio", folio_id, "balance")
+        if balance < 0:
+            return "Balance is negative. There are still transactions needed to be resolved."
+        credit_excess_to_customer(folio_id)
         folio = frappe.get_doc("Inn Folio", folio_id)
+        folio.balance=0 #remaining differnce to zero
         folio.status = "Closed"
         folio.close = datetime.date.today()
         folio.save()

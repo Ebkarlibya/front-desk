@@ -9,7 +9,7 @@ import datetime
 from frappe.model.document import Document
 from inn.helper.utils import fetch_folio_accounts
 from inn.inn_hotels.doctype.inn_audit_log.inn_audit_log import get_last_audit_date
-from inn.inn_hotels.doctype.inn_folio.inn_folio import check_void_request
+from inn.inn_hotels.doctype.inn_folio.inn_folio import (check_void_request,credit_excess_to_customer,update_balance,)
 from inn.inn_hotels.doctype.inn_dayend_close.inn_dayend_close_helper import (
     _fill_party_account,
 )
@@ -299,7 +299,7 @@ def process_dayend_close(doc_id):
         # Create Journal Entry for Inn Restaurant Finished Order
         # Get all finished order that not transfered to folio and not paired with journal entry yet
         # create_je_for_inn_restaurant_finished_order(transaction_types)
-
+        credit_today_closed_folios() 
         doc_audit_log = frappe.new_doc("Inn Audit Log")
         doc_audit_log.naming_series = "AL.DD.-.MM.-.YYYY.-"
         doc_audit_log.audit_date = get_last_audit_date() + datetime.timedelta(days=1)
@@ -662,3 +662,16 @@ def create_je_for_inn_restaurant_finished_order(transaction_types):
         frappe.db.set_value(
             "Inn Restaurant Finished Order", order.name, "is_journaled", 1
         )
+def credit_today_closed_folios():
+    folios = frappe.get_all(
+        "Inn Folio",
+        filters={
+            "status": ["in", ["Open", "Closed"]],
+            "modified": [">=", get_last_audit_date()],
+        },
+        fields=["name"],
+    )
+
+    for folio in folios:
+        update_balance(folio.name)
+        credit_excess_to_customer(folio.name)
